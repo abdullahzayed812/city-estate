@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Alert } f
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
+import { useConfigStore } from '../../store/configStore';
 
 interface MenuItem {
   icon: string;
@@ -18,6 +19,7 @@ interface MenuItem {
 export default function ProfileScreen(): React.ReactElement {
   const navigation = useNavigation<any>();
   const { user, logout } = useAuthStore();
+  const { serverIp } = useConfigStore();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const handleLogout = () => {
@@ -64,6 +66,12 @@ export default function ProfileScreen(): React.ReactElement {
           label: 'اللغة',
           onPress: () => Alert.alert('قريباً', 'تغيير اللغة قيد التطوير'),
           value: 'العربية',
+        },
+        {
+          icon: '🖥️',
+          label: 'إعدادات الخادم',
+          onPress: () => navigation.navigate('ServerConfig'),
+          value: serverIp,
         },
       ],
     },

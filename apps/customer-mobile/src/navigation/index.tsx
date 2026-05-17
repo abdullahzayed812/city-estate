@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useAuthStore } from '../store/authStore';
+import { useConfigStore } from '../store/configStore';
 
 const AuthStack = createStackNavigator();
 const MainTab = createBottomTabNavigator();
@@ -21,6 +22,7 @@ const BookingsStack = createStackNavigator();
 const ProfileStack = createStackNavigator();
 const Root = createStackNavigator();
 
+import ServerConfigScreen from '../screens/config/ServerConfigScreen';
 import WelcomeScreen from '../screens/auth/WelcomeScreen';
 import OtpScreen from '../screens/auth/OtpScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
@@ -123,6 +125,7 @@ function ProfileNavigator(): React.ReactElement {
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
       <ProfileStack.Screen name="Favorites" component={FavoritesScreen} />
+      <ProfileStack.Screen name="ServerConfig" component={ServerConfigScreen} />
     </ProfileStack.Navigator>
   );
 }
@@ -156,13 +159,15 @@ function AuthNavigator(): React.ReactElement {
 }
 
 export function AppNavigator(): React.ReactElement {
-  const { isAuthenticated, isLoading, hydrate } = useAuthStore();
+  const { isAuthenticated, isLoading: authLoading, hydrate: hydrateAuth } = useAuthStore();
+  const { isConfigured, isLoading: configLoading, hydrate: hydrateConfig } = useConfigStore();
 
   useEffect(() => {
-    hydrate();
+    hydrateConfig();
+    hydrateAuth();
   }, []);
 
-  if (isLoading) {
+  if (authLoading || configLoading) {
     return (
       <View style={splashStyles.container}>
         <Text style={splashStyles.logo}>🏠</Text>
@@ -175,7 +180,9 @@ export function AppNavigator(): React.ReactElement {
   return (
     <NavigationContainer>
       <Root.Navigator screenOptions={{ headerShown: false }}>
-        {isAuthenticated ? (
+        {!isConfigured ? (
+          <Root.Screen name="Setup" component={ServerConfigScreen} />
+        ) : isAuthenticated ? (
           <Root.Screen name="Main" component={MainTabNavigator} />
         ) : (
           <Root.Screen name="Auth" component={AuthNavigator} />

@@ -1,18 +1,16 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// const API_BASE_URL = __DEV__
-//   ? 'http://192.168.0.128/api'
-//   : 'https://api.borgalarab-realestate.com/api';
-const API_BASE_URL = 'http://192.168.0.128/api';
+import { DEFAULT_SERVER_IP, SERVER_IP_KEY } from '../store/configStore';
 
 export const api = axios.create({
-  baseURL: API_BASE_URL,
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 });
 
 api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+  const ip = await AsyncStorage.getItem(SERVER_IP_KEY) ?? DEFAULT_SERVER_IP;
+  config.baseURL = `http://${ip}/api`;
+
   const token = await AsyncStorage.getItem('access_token');
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -31,7 +29,8 @@ api.interceptors.response.use(
         const refreshToken = await AsyncStorage.getItem('refresh_token');
         if (!refreshToken) throw new Error('No refresh token');
 
-        const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
+        const ip = await AsyncStorage.getItem(SERVER_IP_KEY) ?? DEFAULT_SERVER_IP;
+        const { data } = await axios.post(`http://${ip}/api/auth/refresh`, { refreshToken });
         await AsyncStorage.multiSet([
           ['access_token', data.data.accessToken],
           ['refresh_token', data.data.refreshToken],

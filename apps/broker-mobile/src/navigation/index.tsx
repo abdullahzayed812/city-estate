@@ -11,6 +11,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useAuthStore } from '../store/authStore';
+import { useConfigStore } from '../store/configStore';
+import { colors, radius, shadow } from '../theme';
 
 const AuthStack = createStackNavigator();
 const MainTab = createBottomTabNavigator();
@@ -20,6 +22,7 @@ const ChatStack = createStackNavigator();
 const ProfileStack = createStackNavigator();
 const Root = createStackNavigator();
 
+import ServerConfigScreen from '../screens/config/ServerConfigScreen';
 import BrokerDashboard from '../screens/dashboard/BrokerDashboard';
 import OtpScreen from '../screens/auth/OtpScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
@@ -49,7 +52,7 @@ function BrokerTabBar({ state, navigation }: BottomTabBarProps) {
           return (
             <TouchableOpacity
               key={route.key}
-              style={[tabStyles.item, focused && tabStyles.itemActive]}
+              style={tabStyles.item}
               onPress={() => {
                 const event = navigation.emit({
                   type: 'tabPress',
@@ -60,12 +63,30 @@ function BrokerTabBar({ state, navigation }: BottomTabBarProps) {
                   navigation.navigate(route.name);
                 }
               }}
-              onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+              onLongPress={() =>
+                navigation.emit({ type: 'tabLongPress', target: route.key })
+              }
               activeOpacity={0.8}
             >
-              <Text style={tabStyles.icon}>{tab.icon}</Text>
+              {/* Active indicator bar above icon */}
+              <View style={[tabStyles.activeBar, focused && tabStyles.activeBarVisible]} />
+
+              {/* Icon container */}
+              <View
+                style={[
+                  tabStyles.iconWrap,
+                  focused && tabStyles.iconWrapActive,
+                ]}
+              >
+                <Text style={tabStyles.icon}>{tab.icon}</Text>
+              </View>
+
+              {/* Label */}
               <Text
-                style={[tabStyles.label, focused ? tabStyles.labelActive : tabStyles.labelInactive]}
+                style={[
+                  tabStyles.label,
+                  focused ? tabStyles.labelActive : tabStyles.labelInactive,
+                ]}
               >
                 {tab.label}
               </Text>
@@ -107,6 +128,7 @@ function ProfileNavigator() {
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
       <ProfileStack.Screen name="ProfileMain" component={BrokerProfileScreen} />
+      <ProfileStack.Screen name="ServerConfig" component={ServerConfigScreen} />
     </ProfileStack.Navigator>
   );
 }
@@ -140,18 +162,22 @@ function AuthNavigator() {
 }
 
 export function AppNavigator(): React.ReactElement {
-  const { isAuthenticated, isLoading, hydrate } = useAuthStore();
+  const { isAuthenticated, isLoading: authLoading, hydrate: hydrateAuth } = useAuthStore();
+  const { isConfigured, isLoading: configLoading, hydrate: hydrateConfig } = useConfigStore();
 
   useEffect(() => {
-    hydrate();
+    hydrateConfig();
+    hydrateAuth();
   }, []);
 
-  if (isLoading) {
+  if (authLoading || configLoading) {
     return (
       <View style={splashStyles.container}>
-        <Text style={splashStyles.logo}>🏢</Text>
-        <Text style={splashStyles.name}>وسيط برج العرب</Text>
-        <ActivityIndicator color="#1d4ed8" style={{ marginTop: 32 }} />
+        <View style={splashStyles.logoWrap}>
+          <Text style={splashStyles.logo}>🏢</Text>
+        </View>
+        <Text style={splashStyles.name}>وكيل عقاري</Text>
+        <ActivityIndicator color={colors.primary} style={{ marginTop: 36 }} />
       </View>
     );
   }
@@ -159,7 +185,9 @@ export function AppNavigator(): React.ReactElement {
   return (
     <NavigationContainer>
       <Root.Navigator screenOptions={{ headerShown: false }}>
-        {isAuthenticated ? (
+        {!isConfigured ? (
+          <Root.Screen name="Setup" component={ServerConfigScreen} />
+        ) : isAuthenticated ? (
           <Root.Screen name="Main" component={MainTabNavigator} />
         ) : (
           <Root.Screen name="Auth" component={AuthNavigator} />
@@ -172,12 +200,26 @@ export function AppNavigator(): React.ReactElement {
 const splashStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a1628',
+    backgroundColor: colors.dark,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logo: { fontSize: 72 },
-  name: { fontSize: 22, fontWeight: '800', color: '#fff', marginTop: 16 },
+  logoWrap: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  logo: { fontSize: 48 },
+  name: { fontSize: 24, fontWeight: '800', color: '#fff' },
 });
 
 const tabStyles = StyleSheet.create({
@@ -186,47 +228,61 @@ const tabStyles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 16,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 14,
+    paddingHorizontal: 14,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 12,
     paddingTop: 8,
     backgroundColor: 'transparent',
   },
   bar: {
     flexDirection: 'row',
-    backgroundColor: '#0a1628',
-    borderRadius: 28,
+    backgroundColor: colors.dark,
+    borderRadius: radius.xl,
     padding: 6,
-    gap: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 24,
-    elevation: 14,
+    gap: 2,
+    ...shadow.lg,
   },
   item: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 4,
-    borderRadius: 22,
-    gap: 3,
+    borderRadius: radius.lg,
+    gap: 2,
+    position: 'relative',
+    paddingTop: 12,
   },
-  itemActive: {
-    backgroundColor: '#1d4ed8',
-    flex: 1.6,
+
+  // Blue indicator bar above icon
+  activeBar: {
+    position: 'absolute',
+    top: 2,
+    left: '25%',
+    right: '25%',
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: 'transparent',
   },
-  icon: {
-    fontSize: 18,
+  activeBarVisible: {
+    backgroundColor: colors.primary,
   },
-  label: {
-    fontSize: 12,
-    fontWeight: 'bold',
+
+  // Icon container 36×36 rounded square
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
-  labelActive: {
-    color: '#ffffff',
+  iconWrapActive: {
+    backgroundColor: colors.primary,
   },
-  labelInactive: {
-    color: 'rgba(255,255,255,0.5)',
-  },
+
+  icon: { fontSize: 18 },
+
+  label: { fontSize: 11, fontWeight: '700' },
+  labelActive: { color: colors.primary },
+  labelInactive: { color: 'rgba(255,255,255,0.45)' },
 });

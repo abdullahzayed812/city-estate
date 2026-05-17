@@ -18,9 +18,10 @@ import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
+import { colors, radius, shadow } from '../../theme';
+import { Avatar } from '../../components/ui';
 
-// const SOCKET_URL = __DEV__ ? 'http://192.168.0.128:3004' : 'https://api.borgalarab-realestate.com';
-const SOCKET_URL = 'http://192.168.0.128:3004';
+import { DEFAULT_SERVER_IP, SERVER_IP_KEY } from '../../store/configStore';
 
 interface Message {
   id: string;
@@ -71,7 +72,8 @@ export default function ChatScreen(): React.ReactElement {
       const token = await AsyncStorage.getItem('access_token');
       if (!token) return;
 
-      socketInstance = io(SOCKET_URL, {
+      const ip = await AsyncStorage.getItem(SERVER_IP_KEY) ?? DEFAULT_SERVER_IP;
+      socketInstance = io(`http://${ip}:3004`, {
         auth: { token },
         transports: ['websocket'],
       });
@@ -137,11 +139,16 @@ export default function ChatScreen(): React.ReactElement {
     }
   };
 
+  const otherName = `${otherUser?.firstName ?? ''} ${otherUser?.lastName ?? ''}`.trim();
+
   const renderMessage = ({ item }: { item: Message }): React.ReactElement => {
     const isMine = item.senderId === user?.id;
 
     return (
       <View style={[styles.messageRow, isMine && styles.messageRowMine]}>
+        {!isMine && (
+          <Avatar name={otherName || 'ع'} size={30} fontSize={12} style={styles.msgAvatar} />
+        )}
         <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}>
           {item.type === 'TEXT' && (
             <Text style={[styles.messageText, isMine && styles.messageTextMine]}>
@@ -156,7 +163,7 @@ export default function ChatScreen(): React.ReactElement {
               hour: '2-digit',
               minute: '2-digit',
             })}
-            {isMine && <Text> {item.isRead ? '✓✓' : '✓'}</Text>}
+            {isMine ? <Text> {item.isRead ? ' ✓✓' : ' ✓'}</Text> : null}
           </Text>
         </View>
       </View>
@@ -165,28 +172,24 @@ export default function ChatScreen(): React.ReactElement {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
+      {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={{ fontSize: 22 }}>←</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+          <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
+        <Avatar name={otherName || 'ع'} size={40} fontSize={15} />
         <View style={styles.headerInfo}>
-          <Text style={styles.headerName}>
-            {otherUser?.firstName} {otherUser?.lastName}
-          </Text>
+          <Text style={styles.headerName}>{otherName}</Text>
           <Text style={[styles.headerStatus, connected && styles.headerStatusOnline]}>
-            {connected ? '● متصل' : '● غير متصل'}
+            {connected ? '● متصل الآن' : '● غير متصل'}
           </Text>
-        </View>
-        <View style={styles.headerAvatar}>
-          <Text style={{ fontSize: 22 }}>👤</Text>
         </View>
       </View>
 
-      {/* Messages */}
+      {/* ── Messages ── */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1d4ed8" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -196,9 +199,10 @@ export default function ChatScreen(): React.ReactElement {
           renderItem={renderMessage}
           contentContainerStyle={styles.messagesList}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
+          showsVerticalScrollIndicator={false}
           ListFooterComponent={
             isTyping ? (
-              <View style={styles.typingIndicator}>
+              <View style={styles.typingBubble}>
                 <Text style={styles.typingText}>يكتب...</Text>
               </View>
             ) : null
@@ -206,18 +210,19 @@ export default function ChatScreen(): React.ReactElement {
         />
       )}
 
-      {/* Input */}
+      {/* ── Input bar ── */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <View style={styles.inputRow}>
-          <TouchableOpacity style={styles.attachBtn}>
-            <Text style={{ fontSize: 22 }}>📎</Text>
+        <View style={styles.inputBar}>
+          <TouchableOpacity style={styles.attachBtn} activeOpacity={0.7}>
+            <Text style={styles.attachIcon}>📎</Text>
           </TouchableOpacity>
           <TextInput
             style={styles.input}
             placeholder="اكتب رسالة..."
+            placeholderTextColor={colors.textMuted}
             value={inputText}
             onChangeText={handleTyping}
             multiline
@@ -227,8 +232,9 @@ export default function ChatScreen(): React.ReactElement {
             style={[styles.sendBtn, !inputText.trim() && styles.sendBtnDisabled]}
             onPress={sendMessage}
             disabled={!inputText.trim()}
+            activeOpacity={0.85}
           >
-            <Text style={{ fontSize: 18, color: '#fff' }}>↑</Text>
+            <Text style={styles.sendIcon}>▶</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -237,95 +243,124 @@ export default function ChatScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
+  container: { flex: 1, backgroundColor: colors.bg },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0a1628',
+    backgroundColor: colors.dark,
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 12,
   },
   backBtn: { padding: 4 },
+  backIcon: { fontSize: 22, color: '#fff' },
   headerInfo: { flex: 1 },
   headerName: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  headerStatus: { fontSize: 12, color: '#94a3b8' },
+  headerStatus: { fontSize: 12, color: colors.textMuted, marginTop: 1 },
   headerStatusOnline: { color: '#4ade80' },
-  headerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#1d4ed8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  messagesList: { paddingHorizontal: 16, paddingVertical: 12 },
-  messageRow: { marginBottom: 8, alignItems: 'flex-start' },
-  messageRowMine: { alignItems: 'flex-end' },
+
+  // Messages list
+  messagesList: { paddingHorizontal: 16, paddingVertical: 16, gap: 4 },
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginBottom: 6,
+    gap: 8,
+  },
+  messageRowMine: {
+    flexDirection: 'row-reverse',
+  },
+  msgAvatar: { marginBottom: 2 },
+
+  // Bubbles
   bubble: {
-    maxWidth: '75%',
-    borderRadius: 16,
+    maxWidth: '74%',
+    borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   bubbleOther: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.bgCard,
     borderBottomRightRadius: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow.sm,
   },
   bubbleMine: {
-    backgroundColor: '#1d4ed8',
+    backgroundColor: colors.primary,
     borderBottomLeftRadius: 4,
   },
-  messageText: { fontSize: 15, color: '#0f172a', lineHeight: 22 },
+  messageText: { fontSize: 15, color: colors.text, lineHeight: 22 },
   messageTextMine: { color: '#fff' },
   messageImage: { width: 220, height: 165, borderRadius: 10 },
-  messageTime: { fontSize: 11, color: '#94a3b8', marginTop: 4 },
-  messageTimeMine: { color: 'rgba(255,255,255,0.7)' },
-  typingIndicator: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    alignSelf: 'flex-start',
+  messageTime: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 5,
+    textAlign: 'right',
   },
-  typingText: { fontSize: 13, color: '#64748b', fontStyle: 'italic' },
-  inputRow: {
+  messageTimeMine: { color: 'rgba(255,255,255,0.65)' },
+
+  // Typing
+  typingBubble: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.bgCard,
+    borderRadius: 18,
+    borderBottomRightRadius: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginLeft: 46,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  typingText: { fontSize: 13, color: colors.textSub, fontStyle: 'italic' },
+
+  // Input bar
+  inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    backgroundColor: '#fff',
+    backgroundColor: colors.bgCard,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    borderTopColor: colors.border,
     gap: 8,
   },
-  attachBtn: { padding: 6 },
+  attachBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attachIcon: { fontSize: 20 },
   input: {
     flex: 1,
     minHeight: 44,
     maxHeight: 120,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.bg,
     borderRadius: 22,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 15,
-    color: '#0f172a',
+    color: colors.text,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
+    borderColor: colors.border,
   },
   sendBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#1d4ed8',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    ...shadow.blue,
   },
-  sendBtnDisabled: { opacity: 0.4 },
+  sendBtnDisabled: { opacity: 0.4, ...({} as any) },
+  sendIcon: { fontSize: 16, color: '#fff', marginRight: 1 },
 });

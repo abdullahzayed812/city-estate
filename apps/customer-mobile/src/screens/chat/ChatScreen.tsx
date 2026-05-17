@@ -19,8 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 
-// const SOCKET_URL = __DEV__ ? 'http://192.168.0.128:3004' : 'https://api.borgalarab-realestate.com';
-const SOCKET_URL = 'http://192.168.0.128:3004';
+import { DEFAULT_SERVER_IP, SERVER_IP_KEY } from '../../store/configStore';
 
 interface Message {
   id: string;
@@ -71,7 +70,8 @@ export default function ChatScreen(): React.ReactElement {
       const token = await AsyncStorage.getItem('access_token');
       if (!token) return;
 
-      socketInstance = io(SOCKET_URL, {
+      const ip = await AsyncStorage.getItem(SERVER_IP_KEY) ?? DEFAULT_SERVER_IP;
+      socketInstance = io(`http://${ip}:3004`, {
         auth: { token },
         transports: ['websocket'],
       });
