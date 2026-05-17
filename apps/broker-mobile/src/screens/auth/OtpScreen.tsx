@@ -1,12 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert, I18nManager,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  Alert,
+  I18nManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
+import { colors, radius, shadow } from '../../theme';
 
 type Step = 'PHONE' | 'OTP';
 
@@ -26,7 +35,7 @@ export default function OtpScreen(): React.ReactElement {
 
   useEffect(() => {
     if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+      const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
       return () => clearTimeout(timer);
     }
   }, [countdown]);
@@ -105,22 +114,40 @@ export default function OtpScreen(): React.ReactElement {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
         <View style={styles.content}>
+          {/* Step indicator */}
+          <View style={styles.stepIndicator}>
+            <View style={[styles.stepDot, step === 'PHONE' && styles.stepDotActive]} />
+            <View style={styles.stepLine} />
+            <View style={[styles.stepDot, step === 'OTP' && styles.stepDotActive]} />
+          </View>
+
+          {/* Logo & title */}
           <View style={styles.logoContainer}>
-            <Text style={styles.logo}>🏢</Text>
-            <Text style={styles.title}>وسيط برج العرب</Text>
+            <View style={styles.logoCircle}>
+              <Text style={styles.logo}>🏢</Text>
+            </View>
+            <Text style={styles.title}>وكيل عقاري</Text>
             <Text style={styles.subtitle}>
-              {step === 'PHONE' ? 'أدخل رقم هاتفك للمتابعة' : `أدخل الرمز المرسل إلى\n${phone}`}
+              {step === 'PHONE'
+                ? 'أدخل رقم هاتفك للمتابعة'
+                : `أدخل الرمز المرسل إلى\n+2${phone}`}
             </Text>
           </View>
 
           {step === 'PHONE' ? (
             <View style={styles.form}>
+              {/* Phone input row */}
               <View style={styles.phoneField}>
                 <View style={styles.countryCode}>
-                  <Text style={styles.countryCodeText}>🇪🇬 +20</Text>
+                  <Text style={styles.countryFlag}>🇪🇬</Text>
+                  <Text style={styles.countryCodeText}>+20</Text>
                 </View>
+                <View style={styles.phoneInputDivider} />
                 <TextInput
                   style={styles.phoneInput}
                   value={phone}
@@ -128,7 +155,7 @@ export default function OtpScreen(): React.ReactElement {
                   placeholder="1XX XXXX XXXX"
                   keyboardType="phone-pad"
                   maxLength={13}
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor="rgba(255,255,255,0.35)"
                   textAlign="left"
                 />
               </View>
@@ -137,18 +164,31 @@ export default function OtpScreen(): React.ReactElement {
                 style={[styles.primaryBtn, loading && styles.primaryBtnDisabled]}
                 onPress={handleSendOtp}
                 disabled={loading}
+                activeOpacity={0.85}
               >
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>إرسال الرمز</Text>}
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.primaryBtnText}>إرسال الرمز</Text>
+                )}
               </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.form}>
-              <View style={[styles.otpContainer, I18nManager.isRTL && { flexDirection: 'row-reverse' }]}>
+              {/* OTP boxes */}
+              <View
+                style={[
+                  styles.otpContainer,
+                  I18nManager.isRTL && { flexDirection: 'row-reverse' },
+                ]}
+              >
                 {otp.map((digit, i) => (
                   <TextInput
                     key={i}
-                    ref={(ref) => { inputRefs.current[i] = ref; }}
-                    style={[styles.otpInput, digit && styles.otpInputFilled]}
+                    ref={(ref) => {
+                      inputRefs.current[i] = ref;
+                    }}
+                    style={[styles.otpInput, digit ? styles.otpInputFilled : null]}
                     value={digit}
                     onChangeText={(text) => handleOtpChange(text.slice(-1), i)}
                     onKeyPress={({ nativeEvent }) => handleOtpKeyPress(nativeEvent.key, i)}
@@ -161,22 +201,38 @@ export default function OtpScreen(): React.ReactElement {
               </View>
 
               <TouchableOpacity
-                style={[styles.primaryBtn, (otp.join('').length < 6 || loading) && styles.primaryBtnDisabled]}
+                style={[
+                  styles.primaryBtn,
+                  (otp.join('').length < 6 || loading) && styles.primaryBtnDisabled,
+                ]}
                 onPress={handleVerify}
                 disabled={otp.join('').length < 6 || loading}
+                activeOpacity={0.85}
               >
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>تحقق</Text>}
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.primaryBtnText}>تحقق من الرمز</Text>
+                )}
               </TouchableOpacity>
 
+              {/* Resend & change number row */}
               <View style={styles.resendRow}>
                 {countdown > 0 ? (
-                  <Text style={styles.countdownText}>إعادة الإرسال بعد {countdown}ث</Text>
+                  <View style={styles.timerPill}>
+                    <Text style={styles.timerPillText}>إعادة إرسال بعد {countdown} ث</Text>
+                  </View>
                 ) : (
                   <TouchableOpacity onPress={handleSendOtp}>
                     <Text style={styles.resendText}>إعادة إرسال الرمز</Text>
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity onPress={() => { setStep('PHONE'); setOtp(['', '', '', '', '', '']); }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setStep('PHONE');
+                    setOtp(['', '', '', '', '', '']);
+                  }}
+                >
                   <Text style={styles.changePhoneText}>تغيير الرقم</Text>
                 </TouchableOpacity>
               </View>
@@ -189,38 +245,140 @@ export default function OtpScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a1628' },
+  container: { flex: 1, backgroundColor: colors.dark },
   content: { flex: 1, padding: 28, justifyContent: 'center' },
-  logoContainer: { alignItems: 'center', marginBottom: 48 },
-  logo: { fontSize: 64, marginBottom: 16 },
-  title: { fontSize: 28, fontWeight: '800', color: '#fff', textAlign: 'center' },
-  subtitle: { fontSize: 15, color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginTop: 8, lineHeight: 22 },
+
+  // Step indicator
+  stepIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 40,
+    gap: 0,
+  },
+  stepDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  stepDotActive: {
+    backgroundColor: colors.primary,
+    width: 28,
+    borderRadius: 6,
+  },
+  stepLine: {
+    width: 40,
+    height: 2,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginHorizontal: 6,
+  },
+
+  // Logo
+  logoContainer: { alignItems: 'center', marginBottom: 44 },
+  logoCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+    ...shadow.blue,
+  },
+  logo: { fontSize: 38 },
+  title: { fontSize: 26, fontWeight: '800', color: '#fff', textAlign: 'center' },
+  subtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.55)',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 22,
+  },
+
+  // Form
   form: { gap: 16 },
+
+  // Phone field
   phoneField: {
-    flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 16, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)', overflow: 'hidden',
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.15)',
+    overflow: 'hidden',
+    alignItems: 'center',
   },
   countryCode: {
-    paddingHorizontal: 16, paddingVertical: 16, justifyContent: 'center',
-    borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.15)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    gap: 6,
   },
-  countryCodeText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  phoneInput: { flex: 1, paddingHorizontal: 16, fontSize: 16, color: '#fff' },
+  countryFlag: { fontSize: 18 },
+  countryCodeText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  phoneInputDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  phoneInput: {
+    flex: 1,
+    paddingHorizontal: 14,
+    fontSize: 16,
+    color: '#fff',
+    paddingVertical: 16,
+  },
+
+  // OTP boxes
   otpContainer: { flexDirection: 'row', justifyContent: 'center', gap: 8 },
   otpInput: {
-    width: 48, height: 56, borderRadius: 14, borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'rgba(255,255,255,0.08)',
-    fontSize: 22, fontWeight: '800', color: '#fff',
+    width: 52,
+    height: 56,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
   },
-  otpInputFilled: { borderColor: '#1d4ed8', backgroundColor: 'rgba(29,78,216,0.2)' },
+  otpInputFilled: {
+    borderColor: colors.primary,
+    backgroundColor: 'rgba(29,78,216,0.2)',
+  },
+
+  // Buttons
   primaryBtn: {
-    backgroundColor: '#1d4ed8', borderRadius: 16,
-    paddingVertical: 16, alignItems: 'center', marginTop: 8,
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 4,
+    ...shadow.blue,
   },
   primaryBtnDisabled: { opacity: 0.5 },
   primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  resendRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  countdownText: { fontSize: 13, color: 'rgba(255,255,255,0.5)' },
-  resendText: { fontSize: 13, color: '#60a5fa', fontWeight: '600' },
-  changePhoneText: { fontSize: 13, color: 'rgba(255,255,255,0.5)' },
+
+  // Resend row
+  resendRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  timerPill: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: radius.full,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  timerPillText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.55)',
+    fontWeight: '600',
+  },
+  resendText: { fontSize: 13, color: '#60a5fa', fontWeight: '700' },
+  changePhoneText: { fontSize: 13, color: 'rgba(255,255,255,0.45)' },
 });

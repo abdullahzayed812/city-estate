@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -15,6 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../services/api';
+import { colors, radius, shadow } from '../../theme';
+import { TextInputField, SectionHeader } from '../../components/ui';
 
 const PROPERTY_TYPES = [
   { key: 'APARTMENT', label: 'شقة' },
@@ -142,8 +143,9 @@ export default function AddPropertyScreen(): React.ReactElement {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
         <Text style={styles.title}>{isEdit ? 'تعديل العقار' : 'إضافة عقار'}</Text>
@@ -154,55 +156,63 @@ export default function AddPropertyScreen(): React.ReactElement {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-          {/* Basic Info */}
+        <ScrollView
+          style={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* ── المعلومات الأساسية ── */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>المعلومات الأساسية</Text>
+            <SectionHeader title="المعلومات الأساسية" />
 
-            <Text style={styles.label}>عنوان العقار *</Text>
-            <TextInput
-              style={styles.input}
+            <TextInputField
+              label="عنوان العقار *"
               value={form.titleAr}
               onChangeText={(v) => update('titleAr', v)}
-              placeholder="مثال: شقة فاخرة بثلاث غرف نوم..."
+              placeholder="مثال: شقة فاخرة بثلاث غرف نوم في برج العرب..."
               multiline
-              placeholderTextColor="#94a3b8"
             />
 
-            <Text style={styles.label}>
-              {'وصف العقار * '}
-              <Text style={styles.labelHint}>
-                ({form.descriptionAr.trim().length}/50 حرف كحد أدنى)
+            <View style={{ marginTop: 14 }}>
+              <Text style={styles.label}>
+                {'وصف العقار * '}
+                <Text style={styles.labelHint}>
+                  ({form.descriptionAr.trim().length}/50 حرف كحد أدنى)
+                </Text>
               </Text>
-            </Text>
-            <TextInput
-              style={[styles.input, { minHeight: 100 }]}
-              value={form.descriptionAr}
-              onChangeText={(v) => update('descriptionAr', v)}
-              placeholder="وصف تفصيلي للعقار ومميزاته..."
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              placeholderTextColor="#94a3b8"
-            />
+              <TextInputField
+                value={form.descriptionAr}
+                onChangeText={(v) => update('descriptionAr', v)}
+                placeholder="وصف تفصيلي للعقار ومميزاته..."
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                style={{ minHeight: 100 } as any}
+              />
+            </View>
           </View>
 
-          {/* Type */}
+          {/* ── نوع وسعر العقار ── */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>نوع العقار</Text>
+            <SectionHeader title="نوع وسعر العقار" />
+
+            <Text style={styles.label}>نوع العقار</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              style={{ marginHorizontal: -20 }}
-              contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+              style={styles.chipScroll}
+              contentContainerStyle={styles.chipScrollContent}
             >
               {PROPERTY_TYPES.map((t) => (
                 <TouchableOpacity
                   key={t.key}
                   style={[styles.chip, form.type === t.key && styles.chipActive]}
                   onPress={() => update('type', t.key)}
+                  activeOpacity={0.75}
                 >
-                  <Text style={[styles.chipText, form.type === t.key && styles.chipTextActive]}>
+                  <Text
+                    style={[styles.chipText, form.type === t.key && styles.chipTextActive]}
+                  >
                     {t.label}
                   </Text>
                 </TouchableOpacity>
@@ -210,12 +220,13 @@ export default function AddPropertyScreen(): React.ReactElement {
             </ScrollView>
 
             <Text style={[styles.label, { marginTop: 16 }]}>نوع العرض</Text>
-            <View style={styles.row}>
+            <View style={styles.optionRow}>
               {LISTING_TYPES.map((t) => (
                 <TouchableOpacity
                   key={t.key}
                   style={[styles.optionBtn, form.listingType === t.key && styles.optionBtnActive]}
                   onPress={() => update('listingType', t.key)}
+                  activeOpacity={0.75}
                 >
                   <Text
                     style={[
@@ -228,111 +239,111 @@ export default function AddPropertyScreen(): React.ReactElement {
                 </TouchableOpacity>
               ))}
             </View>
-          </View>
 
-          {/* Pricing & Area */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>السعر والمساحة</Text>
+            {/* Price & Area with suffix */}
             <View style={styles.gridRow}>
               <View style={styles.gridCell}>
-                <Text style={styles.label}>السعر (جنيه) *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={form.price}
-                  onChangeText={(v) => update('price', v)}
-                  placeholder="0"
-                  keyboardType="numeric"
-                  placeholderTextColor="#94a3b8"
-                />
+                <Text style={styles.label}>السعر *</Text>
+                <View style={styles.inputWithSuffix}>
+                  <TextInputField
+                    value={form.price}
+                    onChangeText={(v) => update('price', v)}
+                    placeholder="0"
+                    keyboardType="numeric"
+                    style={styles.suffixInput as any}
+                    containerStyle={{ flex: 1 }}
+                  />
+                  <View style={styles.suffixBadge}>
+                    <Text style={styles.suffixText}>ج.م</Text>
+                  </View>
+                </View>
               </View>
               <View style={styles.gridCell}>
-                <Text style={styles.label}>المساحة (م²) *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={form.area}
-                  onChangeText={(v) => update('area', v)}
-                  placeholder="0"
-                  keyboardType="numeric"
-                  placeholderTextColor="#94a3b8"
-                />
+                <Text style={styles.label}>المساحة *</Text>
+                <View style={styles.inputWithSuffix}>
+                  <TextInputField
+                    value={form.area}
+                    onChangeText={(v) => update('area', v)}
+                    placeholder="0"
+                    keyboardType="numeric"
+                    style={styles.suffixInput as any}
+                    containerStyle={{ flex: 1 }}
+                  />
+                  <View style={styles.suffixBadge}>
+                    <Text style={styles.suffixText}>م²</Text>
+                  </View>
+                </View>
               </View>
             </View>
           </View>
 
-          {/* Details */}
+          {/* ── التفاصيل ── */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>تفاصيل إضافية</Text>
+            <SectionHeader title="التفاصيل" />
+
             <View style={styles.gridRow}>
               <View style={styles.gridCell}>
-                <Text style={styles.label}>غرف النوم</Text>
-                <TextInput
-                  style={styles.input}
+                <TextInputField
+                  label="غرف النوم"
                   value={form.bedrooms}
                   onChangeText={(v) => update('bedrooms', v)}
                   placeholder="0"
                   keyboardType="number-pad"
-                  placeholderTextColor="#94a3b8"
                 />
               </View>
               <View style={styles.gridCell}>
-                <Text style={styles.label}>الحمامات</Text>
-                <TextInput
-                  style={styles.input}
+                <TextInputField
+                  label="الحمامات"
                   value={form.bathrooms}
                   onChangeText={(v) => update('bathrooms', v)}
                   placeholder="0"
                   keyboardType="number-pad"
-                  placeholderTextColor="#94a3b8"
-                />
-              </View>
-            </View>
-            <View style={styles.gridRow}>
-              <View style={styles.gridCell}>
-                <Text style={styles.label}>الطابق</Text>
-                <TextInput
-                  style={styles.input}
-                  value={form.floor}
-                  onChangeText={(v) => update('floor', v)}
-                  placeholder="0"
-                  keyboardType="number-pad"
-                  placeholderTextColor="#94a3b8"
-                />
-              </View>
-              <View style={styles.gridCell}>
-                <Text style={styles.label}>عدد الطوابق</Text>
-                <TextInput
-                  style={styles.input}
-                  value={form.totalFloors}
-                  onChangeText={(v) => update('totalFloors', v)}
-                  placeholder="0"
-                  keyboardType="number-pad"
-                  placeholderTextColor="#94a3b8"
                 />
               </View>
             </View>
 
-            <View style={styles.gridRow}>
+            <View style={[styles.gridRow, { marginTop: 14 }]}>
               <View style={styles.gridCell}>
-                <Text style={styles.label}>مواقف السيارات</Text>
-                <TextInput
-                  style={styles.input}
+                <TextInputField
+                  label="الطابق"
+                  value={form.floor}
+                  onChangeText={(v) => update('floor', v)}
+                  placeholder="0"
+                  keyboardType="number-pad"
+                />
+              </View>
+              <View style={styles.gridCell}>
+                <TextInputField
+                  label="عدد الطوابق"
+                  value={form.totalFloors}
+                  onChangeText={(v) => update('totalFloors', v)}
+                  placeholder="0"
+                  keyboardType="number-pad"
+                />
+              </View>
+            </View>
+
+            <View style={[styles.gridRow, { marginTop: 14 }]}>
+              <View style={styles.gridCell}>
+                <TextInputField
+                  label="مواقف السيارات"
                   value={form.parkingSpaces}
                   onChangeText={(v) => update('parkingSpaces', v)}
                   placeholder="0"
                   keyboardType="number-pad"
-                  placeholderTextColor="#94a3b8"
                 />
               </View>
               <View style={styles.gridCell} />
             </View>
 
-            <Text style={styles.label}>التأثيث</Text>
-            <View style={styles.row}>
+            <Text style={[styles.label, { marginTop: 16 }]}>التأثيث</Text>
+            <View style={styles.optionRow}>
               {FURNISHED_OPTS.map((f) => (
                 <TouchableOpacity
                   key={f.key}
                   style={[styles.optionBtn, form.furnished === f.key && styles.optionBtnActive]}
                   onPress={() => update('furnished', form.furnished === f.key ? '' : f.key)}
+                  activeOpacity={0.75}
                 >
                   <Text
                     style={[
@@ -346,13 +357,14 @@ export default function AddPropertyScreen(): React.ReactElement {
               ))}
             </View>
 
-            <Text style={styles.label}>حالة العقار</Text>
-            <View style={styles.row}>
+            <Text style={[styles.label, { marginTop: 16 }]}>حالة العقار</Text>
+            <View style={styles.optionRow}>
               {CONDITION_OPTS.map((c) => (
                 <TouchableOpacity
                   key={c.key}
                   style={[styles.optionBtn, form.condition === c.key && styles.optionBtnActive]}
                   onPress={() => update('condition', form.condition === c.key ? '' : c.key)}
+                  activeOpacity={0.75}
                 >
                   <Text
                     style={[
@@ -367,31 +379,33 @@ export default function AddPropertyScreen(): React.ReactElement {
             </View>
           </View>
 
-          {/* Location */}
+          {/* ── الموقع ── */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>الموقع</Text>
-            <Text style={styles.label}>العنوان التفصيلي *</Text>
-            <TextInput
-              style={styles.input}
+            <SectionHeader title="الموقع" />
+
+            <TextInputField
+              label="العنوان التفصيلي *"
               value={form.address}
               onChangeText={(v) => update('address', v)}
               placeholder="مثال: المجموعة الخامسة، برج العرب الجديدة"
-              placeholderTextColor="#94a3b8"
             />
-            <Text style={styles.label}>الحي / المنطقة</Text>
-            <TextInput
-              style={styles.input}
-              value={form.district}
-              onChangeText={(v) => update('district', v)}
-              placeholder="برج العرب"
-              placeholderTextColor="#94a3b8"
-            />
+
+            <View style={{ marginTop: 14 }}>
+              <TextInputField
+                label="الحي / المنطقة"
+                value={form.district}
+                onChangeText={(v) => update('district', v)}
+                placeholder="برج العرب"
+              />
+            </View>
           </View>
 
-          {/* <View style={{ height: 100 }} /> */}
+          {/* Bottom spacer for sticky footer */}
+          <View style={{ height: 100 }} />
         </ScrollView>
       </KeyboardAvoidingView>
 
+      {/* Sticky footer button */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={[
@@ -400,6 +414,7 @@ export default function AddPropertyScreen(): React.ReactElement {
           ]}
           onPress={() => createMutation.mutate()}
           disabled={!isValid || createMutation.isPending}
+          activeOpacity={0.85}
         >
           {createMutation.isPending ? (
             <ActivityIndicator color="#fff" />
@@ -413,72 +428,109 @@ export default function AddPropertyScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
+  container: { flex: 1, backgroundColor: colors.bg },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: '#0a1628',
+    backgroundColor: colors.dark,
   },
   backBtn: { padding: 4, width: 40 },
   backIcon: { fontSize: 22, color: '#fff' },
   title: { fontSize: 18, fontWeight: '700', color: '#fff' },
+
   scroll: { flex: 1 },
-  section: { backgroundColor: '#fff', padding: 20, marginBottom: 8 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#0f172a', marginBottom: 14 },
-  label: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 12 },
-  labelHint: { fontSize: 11, fontWeight: '400', color: '#94a3b8' },
-  input: {
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: '#0f172a',
-    backgroundColor: '#fff',
+  scrollContent: { paddingBottom: 20 },
+
+  section: {
+    backgroundColor: colors.bgCard,
+    padding: 20,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
+
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSub,
+    marginBottom: 6,
+  },
+  labelHint: { fontSize: 11, fontWeight: '400', color: colors.textMuted },
+
+  chipScroll: { marginHorizontal: -20, marginTop: 4 },
+  chipScrollContent: { paddingHorizontal: 20, gap: 8 },
   chip: {
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingVertical: 9,
+    borderRadius: radius.full,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#fff',
+    borderColor: colors.border,
+    backgroundColor: colors.bgCard,
   },
-  chipActive: { backgroundColor: '#0a1628', borderColor: '#0a1628' },
-  chipText: { fontSize: 13, color: '#475569', fontWeight: '600' },
+  chipActive: { backgroundColor: colors.dark, borderColor: colors.dark },
+  chipText: { fontSize: 13, color: colors.textSub, fontWeight: '600' },
   chipTextActive: { color: '#fff' },
-  row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+
+  optionRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   optionBtn: {
     paddingHorizontal: 14,
     paddingVertical: 9,
-    borderRadius: 12,
+    borderRadius: radius.sm,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#fff',
+    borderColor: colors.border,
+    backgroundColor: colors.bgCard,
   },
-  optionBtnActive: { backgroundColor: '#1d4ed8', borderColor: '#1d4ed8' },
-  optionBtnText: { fontSize: 13, color: '#64748b', fontWeight: '600' },
+  optionBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  optionBtnText: { fontSize: 13, color: colors.textSub, fontWeight: '600' },
   optionBtnTextActive: { color: '#fff' },
+
   gridRow: { flexDirection: 'row', gap: 12 },
   gridCell: { flex: 1 },
+
+  inputWithSuffix: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.bgCard,
+    overflow: 'hidden',
+  },
+  suffixInput: {
+    borderWidth: 0,
+    borderRadius: 0,
+  },
+  suffixBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 13,
+    backgroundColor: '#f1f5f9',
+    borderLeftWidth: 1,
+    borderLeftColor: colors.border,
+  },
+  suffixText: { fontSize: 13, fontWeight: '700', color: colors.textSub },
+
   footer: {
-    backgroundColor: 'transparent',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.bgCard,
     paddingHorizontal: 20,
-    paddingBottom: Platform.OS === 'ios' ? 32 : 20,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 20,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    borderTopColor: colors.border,
+    ...shadow.lg,
   },
   submitBtn: {
-    backgroundColor: '#1d4ed8',
-    borderRadius: 16,
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
     paddingVertical: 16,
     alignItems: 'center',
-    marginBottom: 80,
   },
   submitBtnDisabled: { opacity: 0.5 },
   submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },

@@ -11,6 +11,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import { api } from '../../services/api';
+import { colors, radius, shadow } from '../../theme';
+import { Avatar, EmptyState } from '../../components/ui';
 
 interface Chat {
   id: string;
@@ -26,7 +28,8 @@ function formatTime(dateStr: string | null): string {
   const d = new Date(dateStr);
   const now = new Date();
   const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
-  if (diffDays === 0) return d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+  if (diffDays === 0)
+    return d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
   if (diffDays === 1) return 'أمس';
   return d.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
 }
@@ -42,79 +45,82 @@ export default function BrokerChatListScreen(): React.ReactElement {
     },
   });
 
+  const totalUnread = chats?.reduce((sum, c) => sum + c.brokerUnread, 0) ?? 0;
+
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>المحادثات</Text>
-        {chats && chats.reduce((sum, c) => sum + c.brokerUnread, 0) > 0 && (
-          <View style={styles.totalUnread}>
-            <Text style={styles.totalUnreadText}>
-              {chats.reduce((sum, c) => sum + c.brokerUnread, 0)}
-            </Text>
+        {totalUnread > 0 && (
+          <View style={styles.totalUnreadBadge}>
+            <Text style={styles.totalUnreadText}>{totalUnread}</Text>
           </View>
         )}
       </View>
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1d4ed8" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
           data={chats}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.chatItem}
-              onPress={() =>
-                navigation.navigate('Chat', {
-                  chatId: item.id,
-                  otherUser: item.otherUser,
-                })
-              }
-              activeOpacity={0.7}
-            >
-              <View style={styles.avatarContainer}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>
-                    {item.otherUser.firstName[0]}
-                    {item.otherUser.lastName[0]}
-                  </Text>
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => {
+            const name = `${item.otherUser.firstName} ${item.otherUser.lastName}`;
+            return (
+              <TouchableOpacity
+                style={styles.chatRow}
+                onPress={() =>
+                  navigation.navigate('Chat', {
+                    chatId: item.id,
+                    otherUser: item.otherUser,
+                  })
+                }
+                activeOpacity={0.7}
+              >
+                {/* Avatar with unread dot */}
+                <View style={styles.avatarWrap}>
+                  <Avatar name={name} size={52} fontSize={18} />
+                  {item.brokerUnread > 0 && (
+                    <View style={styles.unreadBadge}>
+                      <Text style={styles.unreadBadgeText}>{item.brokerUnread}</Text>
+                    </View>
+                  )}
                 </View>
-                {item.brokerUnread > 0 && (
-                  <View style={styles.unreadBadge}>
-                    <Text style={styles.unreadText}>{item.brokerUnread}</Text>
+
+                {/* Info */}
+                <View style={styles.chatInfo}>
+                  <View style={styles.topRow}>
+                    <Text style={styles.chatName}>{name}</Text>
+                    <Text style={styles.chatTime}>
+                      {formatTime(item.lastMessage?.createdAt ?? null)}
+                    </Text>
                   </View>
-                )}
-              </View>
-              <View style={styles.chatInfo}>
-                <View style={styles.topRow}>
-                  <Text style={styles.userName}>
-                    {item.otherUser.firstName} {item.otherUser.lastName}
+                  {item.propertyTitleAr ? (
+                    <Text style={styles.propertyLabel} numberOfLines={1}>
+                      🏠 {item.propertyTitleAr}
+                    </Text>
+                  ) : null}
+                  <Text
+                    style={[styles.lastMsg, item.brokerUnread > 0 && styles.lastMsgUnread]}
+                    numberOfLines={1}
+                  >
+                    {item.lastMessage?.content || '—'}
                   </Text>
-                  <Text style={styles.timeText}>{formatTime(item.lastMessage?.createdAt ?? null)}</Text>
                 </View>
-                {item.propertyTitleAr && (
-                  <Text style={styles.propertyName} numberOfLines={1}>
-                    🏠 {item.propertyTitleAr}
-                  </Text>
-                )}
-                <Text
-                  style={[styles.lastMsg, item.brokerUnread > 0 && styles.lastMsgUnread]}
-                  numberOfLines={1}
-                >
-                  {item.lastMessage?.content || '—'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
+              </TouchableOpacity>
+            );
+          }}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={{ fontSize: 48 }}>💬</Text>
-              <Text style={styles.emptyTitle}>لا توجد محادثات</Text>
-              <Text style={styles.emptySubtitle}>ستظهر محادثات العملاء هنا</Text>
-            </View>
+            <EmptyState
+              icon="💬"
+              title="لا توجد محادثات"
+              subtitle="ستظهر محادثات العملاء هنا عندما يتواصلون معك"
+            />
           }
         />
       )}
@@ -123,65 +129,72 @@ export default function BrokerChatListScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: colors.bgCard },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#0a1628',
+    backgroundColor: colors.dark,
   },
   title: { fontSize: 22, fontWeight: '800', color: '#fff' },
-  totalUnread: {
-    backgroundColor: '#ef4444',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+  totalUnreadBadge: {
+    backgroundColor: colors.error,
+    minWidth: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 6,
   },
   totalUnreadText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  chatItem: {
+
+  chatRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 14,
-    gap: 12,
+    gap: 14,
+    backgroundColor: colors.bgCard,
   },
-  avatarContainer: { position: 'relative' },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#1d4ed8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+
+  avatarWrap: { position: 'relative' },
   unreadBadge: {
     position: 'absolute',
-    top: -2,
-    left: -2,
+    top: -3,
+    left: -3,
     minWidth: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#ef4444',
+    backgroundColor: colors.error,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: colors.bgCard,
   },
-  unreadText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  unreadBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+
   chatInfo: { flex: 1 },
-  topRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  userName: { fontSize: 15, fontWeight: '700', color: '#0f172a' },
-  timeText: { fontSize: 12, color: '#94a3b8' },
-  propertyName: { fontSize: 12, color: '#64748b', marginTop: 2 },
-  lastMsg: { fontSize: 13, color: '#94a3b8', marginTop: 3 },
-  lastMsgUnread: { color: '#374151', fontWeight: '600' },
-  separator: { height: 1, backgroundColor: '#f8fafc', marginHorizontal: 20 },
-  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 100 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#374151', marginTop: 16 },
-  emptySubtitle: { fontSize: 14, color: '#94a3b8', marginTop: 6 },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 3,
+  },
+  chatName: { fontSize: 15, fontWeight: '700', color: colors.text },
+  chatTime: { fontSize: 12, color: colors.textMuted },
+  propertyLabel: { fontSize: 12, color: colors.textSub, marginBottom: 3 },
+  lastMsg: { fontSize: 13, color: colors.textMuted },
+  lastMsgUnread: { color: colors.text, fontWeight: '600' },
+
+  separator: {
+    height: 1,
+    backgroundColor: colors.bg,
+    marginHorizontal: 20,
+  },
 });

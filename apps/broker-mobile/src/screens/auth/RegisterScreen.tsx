@@ -2,19 +2,18 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
   StyleSheet,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
+import { colors, radius, shadow } from '../../theme';
+import { Card, PrimaryButton, TextInputField, SectionHeader } from '../../components/ui';
 
 export default function RegisterScreen(): React.ReactElement {
   const navigation = useNavigation<any>();
@@ -58,47 +57,56 @@ export default function RegisterScreen(): React.ReactElement {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <View style={styles.header}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.headerSection}>
+            <View style={styles.logoCircle}>
+              <Text style={styles.logoEmoji}>🏢</Text>
+            </View>
             <Text style={styles.title}>إنشاء حساب وسيط</Text>
             <Text style={styles.subtitle}>أكمل بياناتك للبدء في نشر العقارات</Text>
           </View>
 
-          <View style={styles.form}>
-            <View style={styles.row}>
-              <View style={styles.half}>
-                <Text style={styles.label}>الاسم الأول *</Text>
-                <TextInput
-                  style={styles.input}
+          {/* Form card */}
+          <Card style={styles.formCard}>
+            <SectionHeader title="البيانات الشخصية" />
+
+            {/* First + Last name row */}
+            <View style={styles.nameRow}>
+              <View style={styles.nameCell}>
+                <TextInputField
+                  label="الاسم الأول *"
                   value={firstName}
                   onChangeText={setFirstName}
                   placeholder="محمد"
+                  returnKeyType="next"
                 />
               </View>
-              <View style={styles.half}>
-                <Text style={styles.label}>الاسم الأخير *</Text>
-                <TextInput
-                  style={styles.input}
+              <View style={styles.nameCell}>
+                <TextInputField
+                  label="الاسم الأخير *"
                   value={lastName}
                   onChangeText={setLastName}
                   placeholder="أحمد"
+                  returnKeyType="next"
                 />
               </View>
             </View>
 
-            <View>
-              <Text style={styles.label}>رقم الهاتف</Text>
-              <TextInput
-                style={[styles.input, styles.inputDisabled]}
-                value={phone}
-                editable={false}
-              />
+            <View style={styles.fieldGap}>
+              <Text style={styles.inputLabel}>رقم الهاتف</Text>
+              <View style={styles.disabledInput}>
+                <Text style={styles.disabledInputText}>{phone}</Text>
+              </View>
             </View>
 
-            <View>
-              <Text style={styles.label}>البريد الإلكتروني (اختياري)</Text>
-              <TextInput
-                style={styles.input}
+            <View style={styles.fieldGap}>
+              <TextInputField
+                label="البريد الإلكتروني (اختياري)"
                 value={email}
                 onChangeText={setEmail}
                 placeholder="broker@example.com"
@@ -107,18 +115,15 @@ export default function RegisterScreen(): React.ReactElement {
                 textAlign="left"
               />
             </View>
+          </Card>
 
-            <TouchableOpacity
-              style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
+          <View style={styles.btnWrap}>
+            <PrimaryButton
+              label="إنشاء الحساب"
               onPress={handleRegister}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.submitText}>إنشاء الحساب</Text>
-              )}
-            </TouchableOpacity>
+              loading={loading}
+              disabled={!firstName.trim() || !lastName.trim()}
+            />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -127,33 +132,58 @@ export default function RegisterScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a1628' },
-  scroll: { flexGrow: 1, padding: 24 },
-  header: { alignItems: 'center', marginBottom: 36, marginTop: 20 },
-  title: { fontSize: 26, fontWeight: '800', color: '#fff', textAlign: 'center' },
-  subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginTop: 6 },
-  form: { gap: 16 },
-  row: { flexDirection: 'row', gap: 12 },
-  half: { flex: 1 },
-  label: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.7)', marginBottom: 6 },
-  input: {
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: '#fff',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  inputDisabled: { backgroundColor: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.4)' },
-  submitBtn: {
-    backgroundColor: '#1d4ed8',
-    borderRadius: 16,
-    paddingVertical: 16,
+  container: { flex: 1, backgroundColor: colors.dark },
+  scroll: { flexGrow: 1, padding: 24, paddingBottom: 40 },
+
+  headerSection: { alignItems: 'center', marginBottom: 28, marginTop: 8 },
+  logoCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.primary,
     alignItems: 'center',
-    marginTop: 8,
+    justifyContent: 'center',
+    marginBottom: 16,
+    ...shadow.blue,
   },
-  submitBtnDisabled: { opacity: 0.6 },
-  submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  logoEmoji: { fontSize: 34 },
+  title: { fontSize: 24, fontWeight: '800', color: '#fff', textAlign: 'center' },
+  subtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.55)',
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 20,
+  },
+
+  formCard: {
+    padding: 20,
+    gap: 0,
+  },
+
+  nameRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
+  nameCell: { flex: 1 },
+
+  fieldGap: { marginTop: 16 },
+
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSub,
+    marginBottom: 6,
+  },
+  disabledInput: {
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    backgroundColor: '#f1f5f9',
+  },
+  disabledInputText: {
+    fontSize: 15,
+    color: colors.textMuted,
+  },
+
+  btnWrap: { marginTop: 20 },
 });

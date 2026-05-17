@@ -12,17 +12,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../services/api';
-
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  PENDING: { bg: '#fffbeb', text: '#92400e' },
-  CONFIRMED: { bg: '#ecfdf5', text: '#065f46' },
-  COMPLETED: { bg: '#eff6ff', text: '#1e40af' },
-  CANCELLED: { bg: '#fef2f2', text: '#991b1b' },
-};
+import { colors, radius, shadow } from '../../theme';
+import { Card, Badge, EmptyState } from '../../components/ui';
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: 'معلّق',
@@ -36,6 +32,28 @@ const TYPE_LABELS: Record<string, string> = {
   RENTAL: 'إيجار',
   PURCHASE: 'شراء',
 };
+
+const FILTERS = [
+  { key: 'ALL', label: 'الكل' },
+  { key: 'PENDING', label: 'معلّق' },
+  { key: 'CONFIRMED', label: 'مؤكد' },
+  { key: 'COMPLETED', label: 'مكتمل' },
+];
+
+const MONTH_NAMES_AR = [
+  'يناير', 'فبراير', 'مارس', 'إبريل', 'مايو', 'يونيو',
+  'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+];
+
+function formatDate(dateStr: string): { day: string; month: string } {
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const day = parts[2].replace(/^0/, '');
+    const monthIdx = parseInt(parts[1], 10) - 1;
+    return { day, month: MONTH_NAMES_AR[monthIdx] ?? '' };
+  }
+  return { day: dateStr, month: '' };
+}
 
 interface Booking {
   id: string;
@@ -112,91 +130,127 @@ export default function BookingRequestsScreen(): React.ReactElement {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>الحجوزات</Text>
       </View>
 
-      <View style={styles.filterRow}>
-        {['ALL', 'PENDING', 'CONFIRMED', 'COMPLETED'].map((s) => (
-          <TouchableOpacity
-            key={s}
-            style={[styles.filterBtn, statusFilter === s && styles.filterBtnActive]}
-            onPress={() => setStatusFilter(s)}
-          >
-            <Text style={[styles.filterBtnText, statusFilter === s && styles.filterBtnTextActive]}>
-              {s === 'ALL' ? 'الكل' : STATUS_LABELS[s]}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      {/* Filter pills */}
+      <View style={styles.filterWrap}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContent}
+        >
+          {FILTERS.map((f) => (
+            <TouchableOpacity
+              key={f.key}
+              style={[styles.filterPill, statusFilter === f.key && styles.filterPillActive]}
+              onPress={() => setStatusFilter(f.key)}
+              activeOpacity={0.75}
+            >
+              <Text
+                style={[
+                  styles.filterPillText,
+                  statusFilter === f.key && styles.filterPillTextActive,
+                ]}
+              >
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1d4ed8" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
           data={bookings}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
-            const statusColor = STATUS_COLORS[item.status] || { bg: '#f1f5f9', text: '#475569' };
+            const { day, month } = formatDate(item.scheduledDate);
             return (
-              <View style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <View style={[styles.statusBadge, { backgroundColor: statusColor.bg }]}>
-                    <Text style={[styles.statusText, { color: statusColor.text }]}>
-                      {STATUS_LABELS[item.status]}
-                    </Text>
-                  </View>
-                  <Text style={styles.typeText}>{TYPE_LABELS[item.type]}</Text>
+              <Card style={styles.bookingCard}>
+                {/* Top: type badge + booking type */}
+                <View style={styles.cardTop}>
+                  <Badge status={item.status} label={STATUS_LABELS[item.status] || item.status} />
+                  <Text style={styles.typeLabel}>{TYPE_LABELS[item.type] || item.type}</Text>
                 </View>
 
+                {/* Property name */}
                 <Text style={styles.propertyName} numberOfLines={1}>
-                  {item.property.titleAr}
+                  🏠 {item.property.titleAr}
                 </Text>
 
+                {/* Date block */}
+                <View style={styles.dateBlock}>
+                  <View style={styles.dateBadge}>
+                    <Text style={styles.dateDay}>{day}</Text>
+                    <Text style={styles.dateMonth}>{month}</Text>
+                  </View>
+                  <View style={styles.dateInfo}>
+                    <Text style={styles.timeText}>
+                      🕐 {item.scheduledTime?.slice(0, 5)}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Customer row */}
                 <View style={styles.customerRow}>
-                  <Text style={styles.customerName}>
-                    👤 {item.customer.firstName} {item.customer.lastName}
-                  </Text>
+                  <View style={styles.customerLeft}>
+                    <Text style={styles.customerIcon}>👤</Text>
+                    <Text style={styles.customerName}>
+                      {item.customer.firstName} {item.customer.lastName}
+                    </Text>
+                  </View>
                   <Text style={styles.customerPhone}>{item.customer.phone}</Text>
                 </View>
 
-                <View style={styles.scheduleRow}>
-                  <Text style={styles.scheduleText}>📅 {item.scheduledDate}</Text>
-                  <Text style={styles.scheduleText}>🕐 {item.scheduledTime?.slice(0, 5)}</Text>
-                </View>
+                {/* Notes */}
+                {item.message ? (
+                  <View style={styles.notesWrap}>
+                    <Text style={styles.notesText}>💬 {item.message}</Text>
+                  </View>
+                ) : null}
 
-                {item.message && <Text style={styles.messageText}>💬 {item.message}</Text>}
-
+                {/* Actions for PENDING */}
                 {item.status === 'PENDING' && (
-                  <View style={styles.actions}>
+                  <View style={styles.actionsWrap}>
                     <TouchableOpacity
                       style={styles.confirmBtn}
                       onPress={() => handleConfirm(item.id)}
+                      activeOpacity={0.85}
                     >
-                      <Text style={styles.confirmBtnText}>✓ تأكيد</Text>
+                      <Text style={styles.confirmBtnText}>✓ تأكيد الحجز</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.cancelBtn}
                       onPress={() => handleCancel(item.id)}
+                      activeOpacity={0.85}
                     >
-                      <Text style={styles.cancelBtnText}>✕ إلغاء</Text>
+                      <Text style={styles.cancelBtnText}>إلغاء</Text>
                     </TouchableOpacity>
                   </View>
                 )}
-              </View>
+              </Card>
             );
           }}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={{ fontSize: 48 }}>📅</Text>
-              <Text style={styles.emptyTitle}>لا توجد حجوزات</Text>
-            </View>
+            <EmptyState
+              icon="📅"
+              title="لا توجد حجوزات"
+              subtitle="ستظهر طلبات الحجز من العملاء هنا"
+            />
           }
         />
       )}
+
+      {/* Cancel Modal */}
       <Modal
         visible={cancelModal.visible}
         transparent
@@ -209,15 +263,20 @@ export default function BookingRequestsScreen(): React.ReactElement {
         >
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <Pressable style={styles.modalCard} onPress={() => {}}>
+              <View style={styles.modalIcon}>
+                <Text style={{ fontSize: 28 }}>❌</Text>
+              </View>
               <Text style={styles.modalTitle}>سبب الإلغاء</Text>
-              <Text style={styles.modalSubtitle}>يرجى توضيح سبب إلغاء الحجز للعميل</Text>
+              <Text style={styles.modalSubtitle}>
+                يرجى توضيح سبب إلغاء الحجز للعميل
+              </Text>
 
               <TextInput
                 style={styles.modalInput}
                 value={cancelReason}
                 onChangeText={setCancelReason}
                 placeholder="مثال: تعارض في المواعيد، العقار غير متاح..."
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={colors.textMuted}
                 multiline
                 numberOfLines={3}
                 textAlignVertical="top"
@@ -228,10 +287,11 @@ export default function BookingRequestsScreen(): React.ReactElement {
 
               <View style={styles.modalActions}>
                 <TouchableOpacity
-                  style={styles.modalCancelBtn}
+                  style={styles.modalBackBtn}
                   onPress={() => setCancelModal({ visible: false, bookingId: null })}
+                  activeOpacity={0.8}
                 >
-                  <Text style={styles.modalCancelText}>تراجع</Text>
+                  <Text style={styles.modalBackText}>تراجع</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
@@ -240,6 +300,7 @@ export default function BookingRequestsScreen(): React.ReactElement {
                   ]}
                   onPress={submitCancel}
                   disabled={cancelMutation.isPending}
+                  activeOpacity={0.85}
                 >
                   {cancelMutation.isPending ? (
                     <ActivityIndicator color="#fff" size="small" />
@@ -257,120 +318,187 @@ export default function BookingRequestsScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
-  header: { paddingHorizontal: 20, paddingVertical: 16, backgroundColor: '#0a1628' },
+  container: { flex: 1, backgroundColor: colors.bg },
+
+  header: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: colors.dark,
+  },
   title: { fontSize: 22, fontWeight: '800', color: '#fff' },
-  filterRow: {
-    flexDirection: 'row',
+
+  filterWrap: {
+    backgroundColor: colors.bgCard,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  filterContent: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#fff',
     gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
   },
-  filterBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 12,
+  filterPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radius.full,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
+    borderColor: colors.border,
+    backgroundColor: colors.bgCard,
   },
-  filterBtnActive: { backgroundColor: '#0a1628', borderColor: '#0a1628' },
-  filterBtnText: { fontSize: 12, fontWeight: '600', color: '#64748b' },
-  filterBtnTextActive: { color: '#fff' },
+  filterPillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  filterPillText: { fontSize: 13, fontWeight: '600', color: colors.textSub },
+  filterPillTextActive: { color: '#fff' },
+
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { paddingBottom: 120, padding: 16, gap: 12 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  statusBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  statusText: { fontSize: 12, fontWeight: '700' },
-  typeText: { fontSize: 12, color: '#94a3b8', fontWeight: '600' },
-  propertyName: { fontSize: 15, fontWeight: '700', color: '#0f172a', marginBottom: 10 },
-  customerRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  customerName: { fontSize: 13, fontWeight: '600', color: '#374151' },
-  customerPhone: { fontSize: 13, color: '#64748b' },
-  scheduleRow: { flexDirection: 'row', gap: 16, marginBottom: 8 },
-  scheduleText: { fontSize: 13, color: '#475569' },
-  messageText: {
-    fontSize: 13,
-    color: '#64748b',
-    fontStyle: 'italic',
-    marginTop: 4,
-    marginBottom: 4,
-  },
-  actions: {
+
+  // Booking card
+  bookingCard: { padding: 16 },
+
+  cardTop: {
     flexDirection: 'row',
-    gap: 10,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  typeLabel: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
+
+  propertyName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 14,
+  },
+
+  // Date block
+  dateBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: colors.bg,
+    borderRadius: radius.sm,
+    padding: 12,
+    marginBottom: 12,
+  },
+  dateBadge: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateDay: { fontSize: 22, fontWeight: '800', color: '#fff', lineHeight: 26 },
+  dateMonth: { fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
+  dateInfo: { flex: 1 },
+  timeText: { fontSize: 15, fontWeight: '600', color: colors.text },
+
+  // Customer
+  customerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  customerLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  customerIcon: { fontSize: 16 },
+  customerName: { fontSize: 14, fontWeight: '600', color: colors.text },
+  customerPhone: { fontSize: 13, color: colors.textSub },
+
+  // Notes
+  notesWrap: {
+    backgroundColor: colors.bg,
+    borderRadius: radius.sm,
+    padding: 10,
+    marginBottom: 8,
+  },
+  notesText: { fontSize: 13, color: colors.textSub, fontStyle: 'italic', lineHeight: 19 },
+
+  // Action buttons
+  actionsWrap: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    borderTopColor: colors.border,
+    gap: 8,
   },
   confirmBtn: {
-    flex: 1,
-    backgroundColor: '#ecfdf5',
-    borderRadius: 12,
-    paddingVertical: 10,
+    backgroundColor: colors.success,
+    borderRadius: radius.sm,
+    paddingVertical: 13,
     alignItems: 'center',
   },
-  confirmBtnText: { color: '#065f46', fontWeight: '700', fontSize: 13 },
+  confirmBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   cancelBtn: {
-    flex: 1,
-    backgroundColor: '#fef2f2',
-    borderRadius: 12,
-    paddingVertical: 10,
+    borderRadius: radius.sm,
+    paddingVertical: 12,
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.error,
+    backgroundColor: colors.errorLight,
   },
-  cancelBtnText: { color: '#dc2626', fontWeight: '700', fontSize: 13 },
-  emptyContainer: { flex: 1, alignItems: 'center', paddingTop: 80 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#374151', marginTop: 16 },
+  cancelBtnText: { color: colors.error, fontWeight: '700', fontSize: 14 },
+
+  // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     paddingHorizontal: 20,
   },
   modalCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
+    backgroundColor: colors.bgCard,
+    borderRadius: radius.xl,
     padding: 24,
+    ...shadow.lg,
   },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a', marginBottom: 6 },
-  modalSubtitle: { fontSize: 13, color: '#64748b', marginBottom: 16 },
+  modalIcon: { alignItems: 'center', marginBottom: 12 },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: colors.textSub,
+    marginBottom: 18,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   modalInput: {
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    borderRadius: 14,
+    borderColor: colors.border,
+    borderRadius: radius.md,
     padding: 14,
     fontSize: 14,
-    color: '#0f172a',
+    color: colors.text,
     minHeight: 90,
+    textAlignVertical: 'top',
   },
-  charCount: { fontSize: 11, color: '#94a3b8', textAlign: 'right', marginTop: 4, marginBottom: 20 },
+  charCount: {
+    fontSize: 11,
+    color: colors.textMuted,
+    textAlign: 'right',
+    marginTop: 4,
+    marginBottom: 20,
+  },
   modalActions: { flexDirection: 'row', gap: 10 },
-  modalCancelBtn: {
+  modalBackBtn: {
     flex: 1,
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    borderRadius: 14,
+    borderColor: colors.border,
+    borderRadius: radius.md,
     paddingVertical: 13,
     alignItems: 'center',
+    backgroundColor: colors.bg,
   },
-  modalCancelText: { fontSize: 14, fontWeight: '700', color: '#374151' },
+  modalBackText: { fontSize: 14, fontWeight: '700', color: colors.textSub },
   modalConfirmBtn: {
     flex: 1,
-    backgroundColor: '#dc2626',
-    borderRadius: 14,
+    backgroundColor: colors.error,
+    borderRadius: radius.md,
     paddingVertical: 13,
     alignItems: 'center',
   },

@@ -9,11 +9,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { colors, radius, shadow } from '../../theme';
 
 const { height } = Dimensions.get('window');
 
 const FEATURES = [
-  { icon: '🏠', label: 'أضف عقاراتك', desc: 'انشر إعلاناتك وتواصل مع العملاء' },
+  { icon: '🏠', label: 'أضف عقاراتك', desc: 'انشر إعلاناتك وتواصل مع العملاء بسهولة' },
   { icon: '📅', label: 'إدارة الحجوزات', desc: 'تابع طلبات المعاينة في مكان واحد' },
   { icon: '📊', label: 'إحصائيات دقيقة', desc: 'راقب أداء إعلاناتك لحظة بلحظة' },
 ];
@@ -23,23 +24,23 @@ export default function BrokerWelcomeScreen(): React.ReactElement {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a1628" />
+      <StatusBar barStyle="light-content" backgroundColor={colors.dark} />
 
-      {/* Hero */}
+      {/* Hero — top 40% */}
       <View style={styles.hero}>
         <View style={styles.logoCircle}>
           <Text style={styles.logoEmoji}>🏢</Text>
         </View>
-        <Text style={styles.appName}>وسيط برج العرب</Text>
-        <Text style={styles.tagline}>منصتك الاحترافية لإدارة العقارات وتنمية أعمالك</Text>
+        <Text style={styles.appName}>وكيل عقاري</Text>
+        <Text style={styles.tagline}>منصتك الاحترافية لإدارة العقارات{'\n'}وتنمية أعمالك في برج العرب</Text>
       </View>
 
       {/* Feature highlights */}
       <View style={styles.features}>
         {FEATURES.map((f) => (
           <View key={f.label} style={styles.featureRow}>
-            <View style={styles.featureIcon}>
-              <Text style={{ fontSize: 22 }}>{f.icon}</Text>
+            <View style={styles.featureIconWrap}>
+              <Text style={styles.featureIconText}>{f.icon}</Text>
             </View>
             <View style={styles.featureText}>
               <Text style={styles.featureLabel}>{f.label}</Text>
@@ -64,7 +65,7 @@ export default function BrokerWelcomeScreen(): React.ReactElement {
           onPress={() => navigation.navigate('Otp', { intent: 'register' })}
           activeOpacity={0.85}
         >
-          <Text style={styles.secondaryBtnText}>إنشاء حساب وسيط</Text>
+          <Text style={styles.secondaryBtnText}>إنشاء حساب</Text>
         </TouchableOpacity>
 
         <Text style={styles.terms}>
@@ -79,94 +80,97 @@ export default function BrokerWelcomeScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a1628' },
+  container: { flex: 1, backgroundColor: colors.dark },
 
+  // Hero
   hero: {
-    flex: 1,
+    height: height * 0.40,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 32,
-    paddingTop: height * 0.04,
   },
   logoCircle: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: '#1d4ed8',
+    width: 106,
+    height: 106,
+    borderRadius: 53,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
-    shadowColor: '#1d4ed8',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 10,
+    marginBottom: 22,
+    ...shadow.blue,
   },
-  logoEmoji: { fontSize: 52 },
+  logoEmoji: { fontSize: 50 },
   appName: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '800',
     color: '#fff',
     textAlign: 'center',
+    letterSpacing: 0.5,
     marginBottom: 10,
   },
   tagline: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.6)',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.55)',
     textAlign: 'center',
     lineHeight: 22,
   },
 
+  // Features
   features: {
+    flex: 1,
     paddingHorizontal: 28,
-    gap: 16,
-    marginBottom: 8,
+    justifyContent: 'center',
+    gap: 20,
   },
   featureRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 16,
   },
-  featureIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+  featureIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    ...shadow.blue,
   },
+  featureIconText: { fontSize: 24 },
   featureText: { flex: 1 },
   featureLabel: { fontSize: 15, fontWeight: '700', color: '#fff' },
-  featureDesc: { fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 1 },
+  featureDesc: { fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 2, lineHeight: 18 },
 
+  // Actions
   actions: {
     paddingHorizontal: 24,
-    paddingBottom: 24,
-    paddingTop: 24,
+    paddingBottom: 28,
+    paddingTop: 16,
     gap: 12,
   },
   primaryBtn: {
-    backgroundColor: '#1d4ed8',
-    borderRadius: 16,
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
     paddingVertical: 17,
     alignItems: 'center',
+    ...shadow.blue,
   },
   primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   secondaryBtn: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: radius.md,
     paddingVertical: 17,
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   secondaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   terms: {
     textAlign: 'center',
     fontSize: 12,
-    color: 'rgba(255,255,255,0.35)',
+    color: 'rgba(255,255,255,0.32)',
     lineHeight: 18,
     marginTop: 4,
   },
-  termsLink: { color: 'rgba(255,255,255,0.65)', fontWeight: '600' },
+  termsLink: { color: 'rgba(255,255,255,0.6)', fontWeight: '600' },
 });
