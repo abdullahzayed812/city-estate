@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#0a1628"/>
+    </linearGradient>
+    <linearGradient id="roof" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="32" height="32" rx="7" fill="url(#bg)"/>
+  <!-- Chimney -->
+  <rect x="21" y="9" width="2.5" height="6" rx="0.5" fill="#cbd5e1"/>
+  <!-- Roof triangle -->
+  <polygon points="16,5 28,16 4,16" fill="url(#roof)"/>
+  <!-- House body -->
+  <rect x="6" y="16" width="20" height="13" rx="1" fill="white" opacity="0.92"/>
+  <!-- Door -->
+  <rect x="13" y="20" width="6" height="9" rx="1" fill="#1d4ed8"/>
+  <!-- Door knob -->
+  <circle cx="17.5" cy="24.5" r="0.9" fill="#93c5fd"/>
+  <!-- Door top arch hint -->
+  <rect x="14" y="20" width="4" height="1.5" rx="0.5" fill="#3b82f6" opacity="0.4"/>
+  <!-- Left window -->
+  <rect x="7.5" y="18" width="4" height="3.5" rx="0.5" fill="#93c5fd" opacity="0.7"/>
+  <line x1="9.5" y1="18" x2="9.5" y2="21.5" stroke="#1d4ed8" stroke-width="0.6" opacity="0.5"/>
+  <!-- Right window -->
+  <rect x="20.5" y="18" width="4" height="3.5" rx="0.5" fill="#93c5fd" opacity="0.7"/>
+  <line x1="22.5" y1="18" x2="22.5" y2="21.5" stroke="#1d4ed8" stroke-width="0.6" opacity="0.5"/>
+</svg>

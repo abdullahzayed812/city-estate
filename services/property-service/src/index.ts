@@ -37,6 +37,7 @@ async function bootstrap(): Promise<void> {
 
   app.use('/api/properties', propertyRoutes);
   app.use('/api/brokers', brokerRoutes);
+  app.use('/api/broker', brokerRoutes);
   app.use('/api/analytics', analyticsRoutes);
 
   app.use((_req, res) => res.status(404).json({ success: false, message: 'Route not found' }));

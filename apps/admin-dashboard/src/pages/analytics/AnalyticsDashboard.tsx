@@ -49,7 +49,7 @@ export function AnalyticsDashboard(): React.ReactElement {
     queryKey: ['analytics', 'dashboard'],
     queryFn: async () => {
       const { data } = await api.get('/analytics/dashboard');
-      return data.data;
+      return data?.data ?? null;
     },
     // Mock data for development
     placeholderData: {

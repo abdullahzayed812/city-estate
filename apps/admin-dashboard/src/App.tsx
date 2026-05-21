@@ -52,17 +52,21 @@ function LoginPage(): React.ReactElement {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">رقم الهاتف</label>
               <input
                 type="tel"
-                placeholder="+201000000000"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                defaultValue="+201000000001"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 font-semibold"
+                dir="ltr"
               />
             </div>
             <button
               onClick={handleLogin}
               className="w-full bg-[#0a1628] text-white py-3 rounded-xl font-semibold hover:bg-blue-800 transition-colors"
             >
-              إرسال رمز التحقق
+              دخول مباشر
             </button>
-            <p className="text-xs text-center text-gray-400 mt-2">وضع التطوير — انقر للدخول مباشرة</p>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-center">
+              <p className="text-xs text-amber-700 font-semibold">وضع التطوير</p>
+              <p className="text-xs text-amber-600 mt-0.5">أحمد المدير · مدير النظام</p>
+            </div>
           </div>
         </div>
       </div>

@@ -1,8 +1,65 @@
 import { Router, Request, Response } from 'express';
 import { DatabaseConnection } from '@realestate/database';
+import { authenticate } from '@realestate/middlewares';
 
 const router = Router();
 const db = () => DatabaseConnection.getInstance();
+
+router.get('/stats', authenticate, async (req: Request, res: Response) => {
+  const userId = req.user?.sub;
+
+  const { rows: brokerRows } = await db().query(
+    'SELECT id, rating, total_deals AS totalDeals, total_properties AS totalProperties, license_number AS licenseNumber, bio, specializations, service_areas AS serviceAreas, national_id AS nationalId FROM brokers WHERE user_id = ? AND deleted_at IS NULL LIMIT 1',
+    [userId],
+  );
+
+  if (!brokerRows.length) {
+    res.status(404).json({ success: false, message: 'Broker profile not found' });
+    return;
+  }
+
+  const broker = brokerRows[0] as any;
+
+  const { rows: propRows } = await db().query(
+    `SELECT
+       COUNT(*) AS totalProperties,
+       SUM(CASE WHEN status = 'ACTIVE' THEN 1 ELSE 0 END) AS activeProperties,
+       COALESCE(SUM(views_count), 0) AS totalViews
+     FROM properties WHERE broker_id = ? AND deleted_at IS NULL`,
+    [broker.id],
+  );
+
+  const { rows: bookingRows } = await db().query(
+    `SELECT
+       COUNT(*) AS totalBookings,
+       SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END) AS pendingBookings,
+       SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) AS completedBookings
+     FROM bookings WHERE broker_id = ?`,
+    [userId],
+  );
+
+  const p = propRows[0] as any;
+  const b = bookingRows[0] as any;
+
+  // calculate profile completion (6 fields)
+  const fields = [broker.licenseNumber, broker.bio, broker.nationalId,
+    broker.specializations?.length, broker.serviceAreas?.length, broker.rating > 0];
+  const profileCompletion = Math.round((fields.filter(Boolean).length / fields.length) * 100);
+
+  res.json({
+    success: true,
+    data: {
+      totalProperties: parseInt(p.totalProperties) || 0,
+      activeProperties: parseInt(p.activeProperties) || 0,
+      totalViews: parseInt(p.totalViews) || 0,
+      totalBookings: parseInt(b.totalBookings) || 0,
+      pendingBookings: parseInt(b.pendingBookings) || 0,
+      totalDeals: parseInt(broker.totalDeals) || 0,
+      rating: parseFloat(broker.rating) || 0,
+      profileCompletion,
+    },
+  });
+});
 
 router.get('/', async (req: Request, res: Response) => {
   const limit = Math.min(parseInt(String(req.query.limit || '20'), 10), 100);
