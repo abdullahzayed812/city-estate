@@ -73,7 +73,7 @@ export default function ChatScreen(): React.ReactElement {
       if (!token) return;
 
       const ip = await AsyncStorage.getItem(SERVER_IP_KEY) ?? DEFAULT_SERVER_IP;
-      socketInstance = io(`http://${ip}:3004`, {
+      socketInstance = io(`http://${ip}:8080`, {
         auth: { token },
         transports: ['websocket'],
       });

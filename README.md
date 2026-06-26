@@ -1,18 +1,20 @@
-# 🏢 منصة برج العرب العقارية
+# منصة برج العرب العقارية
 ## Real Estate Platform — Borg El Arab, Egypt
 
 A complete production-ready real estate platform similar to Property Finder / Bayut / Airbnb.
 
 ---
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 ```
 realestate/
 ├── apps/
 │   ├── customer-mobile/        # React Native — Customer App
 │   ├── broker-mobile/          # React Native — Broker/Agent App
-│   └── admin-dashboard/        # React.js + Vite + Tailwind + Shadcn
+│   ├── customer-web/           # React + Vite — Customer Web (port 8083)
+│   ├── broker-web/             # React + Vite — Broker Web   (port 8082)
+│   └── admin-dashboard/        # React + Vite — Admin Panel  (port 8081)
 │
 ├── services/
 │   ├── auth-service/           # Port 3001 — JWT + OTP Authentication
@@ -30,246 +32,395 @@ realestate/
 │   ├── response/               # ApiResponse helper
 │   └── utils/                  # Logger, crypto, pagination
 │
-├── nginx/                      # API Gateway configuration
-├── docker-compose.yml          # Full infrastructure
-└── .github/workflows/ci.yml    # CI/CD Pipeline
+├── nginx/
+│   └── nginx.conf              # API Gateway config (routes all /api/* traffic)
+├── docker-compose.yml
+└── .env.example
 ```
 
 ---
 
-## 🚀 Quick Start
+## Docker Network Architecture
+
+```
+Internet / VPS
+      │
+      ├── :8080 ──► gateway (nginx)       API gateway — used by mobile apps
+      │                 │                  routes /api/* to backend services
+      │                 └── /socket.io/ ──► chat-service:3004
+      │
+      ├── :8081 ──► admin-dashboard       Admin panel SPA
+      │                 │                  proxies /api/ → gateway internally
+      │
+      ├── :8082 ──► broker-web            Broker web SPA
+      │                 │                  proxies /api/ and /socket.io/ → internal services
+      │
+      └── :8083 ──► customer-web          Customer web SPA
+                        │
+                        └── proxies /api/ and /socket.io/ → internal services
+
+Internal Docker network only (not exposed to host):
+  mysql:3306 · redis:6379
+  auth-service:3001 · property-service:3002 · booking-service:3003
+  chat-service:3004 · notification-service:3005 · media-service:3006
+```
+
+### Why this design
+- Backend services are **not exposed to the host** — they are only reachable through the gateway or directly within the Docker network.
+- Web apps (8081–8083) proxy all `/api/` calls and WebSocket connections internally, so the browser never needs to know the VPS IP — all URLs are relative (`/api/...`).
+- Port 8080 is used instead of 80 to avoid conflicts with other systems already running on the VPS.
+
+---
+
+## VPS Deployment
 
 ### Prerequisites
-- Node.js >= 20
-- Docker & Docker Compose
-- Yarn >= 1.22
+- Docker >= 24
+- Docker Compose >= 2.x
+- Git
 
-### 1. Clone & Install
+### 1. Clone the repository
+
 ```bash
-git clone <repo>
-cd realestate
-yarn install
+git clone <repo-url>
+cd cityestate
 ```
 
-### 2. Environment Setup
+### 2. Set root environment variables
+
 ```bash
 cp .env.example .env
-# Edit .env with your credentials
+nano .env   # set DB_ROOT_PASSWORD, DB_PASSWORD, REDIS_PASSWORD
 ```
 
-### 3. Start Infrastructure
+### 3. Set per-service secrets
+
+Each service has its own `.env` file. Edit these before deploying:
+
 ```bash
-docker-compose up -d mysql redis nginx
+nano services/auth-service/.env          # JWT secrets, Twilio (OTP)
+nano services/notification-service/.env  # Firebase project ID + credentials
+nano services/media-service/.env         # Cloudflare R2 keys
+nano services/property-service/.env      # JWT public key, CORS origins
+nano services/booking-service/.env       # JWT public key
+nano services/chat-service/.env          # JWT public key
 ```
 
-### 4. Run Database Migrations
+### 4. Build and start all containers
+
 ```bash
-docker exec -i realestate_mysql mysql -u root -p realestate_db < shared/database/src/migrations/001_initial_schema.sql
+docker compose up -d --build
 ```
 
-### 5. Start Services (Development)
+This builds all 9 images (6 backend services + 3 web apps) and starts 13 containers total.
+
+### 5. Verify everything is running
+
 ```bash
-# Terminal 1: Auth Service
-yarn dev:auth
-
-# Terminal 2: Property Service
-yarn dev:property
-
-# Terminal 3: Chat Service
-yarn dev:chat
-
-# Terminal 4: Admin Dashboard
-yarn dev:dashboard
+docker compose ps
 ```
 
-### 6. Docker (Production)
+Expected output — all containers should show `Up`:
+
+```
+realestate_mysql          Up (healthy)
+realestate_redis          Up (healthy)
+realestate_auth           Up
+realestate_property       Up
+realestate_booking        Up
+realestate_chat           Up
+realestate_notification   Up
+realestate_media          Up
+realestate_gateway        Up
+realestate_admin          Up
+realestate_broker_web     Up
+realestate_customer_web   Up
+```
+
+### 6. Access the apps
+
+| URL | Description |
+|-----|-------------|
+| `http://VPS_IP:8080/api/auth/health` | API gateway health check |
+| `http://VPS_IP:8081` | Admin dashboard |
+| `http://VPS_IP:8082` | Broker web app |
+| `http://VPS_IP:8083` | Customer web app |
+
+---
+
+## Mobile Apps (React Native)
+
+Mobile apps connect to the VPS over HTTP — they are **not** hosted on the server. You build an APK/IPA and distribute it.
+
+### How mobile connects to the backend
+
+The app has a built-in settings screen (Server Config) where the user enters the VPS IP. The app then connects to:
+
+| Purpose | URL format |
+|---------|------------|
+| REST API | `http://VPS_IP:8080/api/...` |
+| WebSocket (chat) | `http://VPS_IP:8080` → nginx proxies `/socket.io/` to chat-service |
+
+### Build the Android APK
+
+1. Open `apps/broker-mobile` or `apps/customer-mobile` in Android Studio, **or** run:
+
 ```bash
-docker-compose up -d
+cd apps/broker-mobile
+npx react-native run-android --mode=release
+# APK will be at android/app/build/outputs/apk/release/app-release.apk
+```
+
+2. Install the APK on a device and open it. Go to the **Server Config screen** and enter your VPS IP (e.g. `203.0.113.42`). The app adds `:8080` automatically.
+
+> The default placeholder IP is `192.168.0.128` (local dev). Always update this to the VPS IP before distributing the APK.
+
+---
+
+## Useful Commands
+
+### Logs
+
+```bash
+# All containers
+docker compose logs -f
+
+# Single service
+docker compose logs -f auth-service
+docker compose logs -f gateway
+```
+
+### Rebuild a single image after code changes
+
+```bash
+docker compose up -d --build auth-service
+docker compose up -d --build customer-web
+```
+
+### Restart without rebuild
+
+```bash
+docker compose restart chat-service
+```
+
+### Stop everything
+
+```bash
+docker compose down
+```
+
+### Stop and delete all data (destructive)
+
+```bash
+docker compose down -v   # removes mysql_data and redis_data volumes
 ```
 
 ---
 
-## 🌐 API Endpoints
+## Database
 
-### Auth Service (`:3001`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/otp/send` | Send OTP to phone |
-| POST | `/api/auth/register` | Register new user |
-| POST | `/api/auth/login` | Login with OTP |
-| POST | `/api/auth/refresh` | Refresh access token |
-| POST | `/api/auth/logout` | Logout |
-| GET | `/api/auth/profile` | Get profile |
+### Migrations
 
-### Property Service (`:3002`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/properties` | Search properties (with filters) |
-| GET | `/api/properties/featured` | Featured properties |
-| GET | `/api/properties/:id` | Property details |
-| POST | `/api/properties` | Create property (BROKER) |
-| PUT | `/api/properties/:id` | Update property |
-| DELETE | `/api/properties/:id` | Delete property |
-| PATCH | `/api/properties/:id/approve` | Approve (ADMIN) |
-| PATCH | `/api/properties/:id/reject` | Reject (ADMIN) |
-| POST | `/api/properties/:id/favorite` | Toggle favorite |
-| GET | `/api/properties/user/favorites` | My favorites |
+Migrations run automatically on first start via the MySQL `docker-entrypoint-initdb.d` mount:
 
-### Chat Service (`:3004`)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/chats` | Get user's chats |
-| POST | `/api/chats` | Start a chat |
-| GET | `/api/chats/:chatId/messages` | Get messages |
-| WS | `socket.io` | Real-time messaging |
-
-### Socket.IO Events
 ```
-Client → Server:
-  join_chat      { chatId }
-  send_message   { chatId, type, content?, mediaUrl? }
-  typing         { chatId }
-  stop_typing    { chatId }
-  mark_read      { chatId }
+shared/database/src/migrations/
+  000_create_db_and_user.sql   — creates DB and user
+  001_initial_schema.sql       — all 18 tables
+  002_seed_data.sql            — seed/reference data
+```
 
-Server → Client:
-  new_message      Message object
-  user_typing      { chatId, userId }
-  user_stop_typing { chatId, userId }
-  messages_read    { chatId, readBy }
-  chat_notification { chatId, message }
+> This only runs when the `mysql_data` volume is **empty** (first time). On subsequent starts, the volume already has data so migrations are skipped.
+
+### Manual database access
+
+```bash
+# Open MySQL shell inside the container
+docker exec -it realestate_mysql mysql -u realestate -p realestate_db
+
+# Run a migration manually
+docker exec -i realestate_mysql mysql -u realestate -p realestate_db \
+  < shared/database/src/migrations/001_initial_schema.sql
+```
+
+### Using the init script (from host)
+
+```bash
+# Requires mysql-client installed on the host
+DB_HOST=VPS_IP DB_ROOT_USER=root DB_ROOT_PASSWORD=yourpassword bash scripts/db-init.sh
 ```
 
 ---
 
-## 📱 Mobile Apps
+## Web App Build System
 
-### Customer App Features
-- OTP Authentication (phone-based)
-- Arabic RTL Support
-- Browse & Search Properties
-- Advanced Filters (type, price, area, location, bedrooms)
-- Interactive Google Maps
-- Save Favorites
-- Real-time Chat with Brokers
-- Book Property Visits
-- Firebase Push Notifications
-- Share Properties
+Web apps (admin-dashboard, broker-web, customer-web) use **Vite** with two env files:
 
-### Broker App Features
-- Add/Edit/Delete Properties
-- Upload Images/Videos (Cloudflare R2)
-- Manage Leads & Chat
-- Booking Management
-- Analytics Dashboard
-- Subscription Plans
-- Broker Profile
+| File | Used for | API URL |
+|------|----------|---------|
+| `.env` | Local development | `http://localhost/api` (through dev nginx) |
+| `.env.production` | Docker production build | `/api` (relative — proxied by app's own nginx) |
+
+Vite automatically picks `.env.production` during `npm run build`, so Docker images always get the correct relative URLs — no VPS IP needs to be hardcoded in the image.
 
 ---
 
-## 🗄️ Database Schema
+## Adding a Domain Later
 
-18 tables with full relational integrity:
-- `users` — All user accounts (customers, brokers, admins)
-- `brokers` — Broker profiles
-- `companies` — Real estate companies
-- `properties` — Property listings
-- `property_locations` — GPS coordinates + addresses
-- `property_images` — Images with thumbnails
-- `property_videos` — Video uploads
-- `property_features` — Indoor/outdoor features
-- `favorites` — User saved properties
-- `chats` — Chat rooms
-- `messages` — Chat messages (text/image/voice/property cards)
-- `bookings` — Visit & rental bookings
-- `notifications` — Push notification records
-- `subscription_plans` — Broker subscription tiers
-- `subscriptions` — Active broker subscriptions
-- `payments` — Payment records
-- `advertisements` — Banner ads management
-- `reports` — User reports/complaints
+When you're ready to add a domain, the only changes needed are:
+
+1. Point your domain's DNS A record to the VPS IP.
+2. Update `nginx/nginx.conf` — add a `server_name your-domain.com;` and HTTPS config.
+3. Add SSL certificates to `nginx/ssl/` (or use Certbot with a separate container).
+4. Update `ALLOWED_ORIGINS` in each service's `.env` to include `https://your-domain.com`.
+5. Update `docker-compose.yml` to expose port 443 on the gateway.
+6. Rebuild and restart: `docker compose up -d --build gateway`.
 
 ---
 
-## 🔐 Authentication Flow
-
-```
-1. User enters phone number
-2. Server sends OTP via Twilio SMS
-3. User enters OTP
-4. Server validates OTP (6 digits, 10 min expiry, max 5 attempts)
-5. Server returns: { user, accessToken (15min), refreshToken (30d) }
-6. Client stores tokens in AsyncStorage/localStorage
-7. Automatic token refresh via interceptor
-```
-
----
-
-## 📦 Property Types Supported
-- شقق (Apartments)
-- فيلل (Villas)
-- أراضي (Land)
-- مكاتب (Offices)
-- محلات (Shops)
-- مخازن (Warehouses)
-- مصانع (Factories)
-- مباني تجارية (Commercial Buildings)
-- استوديو (Studio)
-- دوبلكس (Duplex)
-- بنتهاوس (Penthouse)
-
----
-
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Backend
 - **Runtime:** Node.js 20 + TypeScript
 - **Framework:** Express.js
-- **Database:** MySQL 8 (no ORM — raw SQL)
+- **Database:** MySQL 8 (raw SQL, no ORM)
 - **Cache:** Redis 7
 - **Real-time:** Socket.IO
-- **Auth:** JWT (access + refresh) + OTP
+- **Auth:** JWT (access 15 min + refresh 30 d) + OTP via Twilio
 - **Storage:** Cloudflare R2 (S3-compatible)
-- **Images:** Sharp (WebP optimization)
 - **Notifications:** Firebase Admin SDK
-- **SMS:** Twilio
 
-### Frontend
-- **Admin Dashboard:** React 18 + Vite + TypeScript + TailwindCSS + Shadcn UI
-- **State Management:** Zustand
+### Frontend (Web)
+- **Framework:** React 18 + Vite + TypeScript
+- **Styling:** TailwindCSS + shadcn/ui (admin), custom (web apps)
+- **State:** Zustand
 - **Data Fetching:** TanStack Query
-- **Charts:** Recharts
 - **Forms:** React Hook Form + Zod
 
-### Mobile Apps
+### Mobile
 - **Framework:** React Native CLI 0.74
 - **Navigation:** React Navigation v6
-- **Data Fetching:** TanStack Query
-- **HTTP Client:** Axios
-- **Forms:** React Hook Form
 - **State:** Zustand + AsyncStorage
+- **HTTP:** Axios
 - **Maps:** React Native Maps (Google Maps)
 
+### Infrastructure
+- **Reverse proxy / API gateway:** nginx
+- **Containerisation:** Docker + Docker Compose
+- **Package manager:** npm workspaces (monorepo)
+
 ---
 
-## 🚢 Deployment
+## API Endpoints Reference
 
-### Docker Compose (Recommended)
-```bash
-# Production
-docker-compose -f docker-compose.yml up -d
+All routes are accessed through the gateway at `http://VPS_IP:8080`.
 
-# With SSL (update nginx/nginx.conf)
-docker-compose up -d nginx
+### Auth (`/api/auth/`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/auth/otp/send` | — | Send OTP to phone |
+| POST | `/api/auth/register` | — | Register new user |
+| POST | `/api/auth/login` | — | Login with OTP |
+| POST | `/api/auth/refresh` | — | Refresh access token |
+| POST | `/api/auth/logout` | Bearer | Logout |
+| GET | `/api/auth/profile` | Bearer | Get profile |
+
+### Properties (`/api/properties/`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/properties` | — | Search (filters: type, price, area, location, bedrooms) |
+| GET | `/api/properties/featured` | — | Featured listings |
+| GET | `/api/properties/:id` | — | Property detail |
+| POST | `/api/properties` | Broker | Create listing |
+| PUT | `/api/properties/:id` | Broker | Update listing |
+| DELETE | `/api/properties/:id` | Broker | Delete listing |
+| PATCH | `/api/properties/:id/approve` | Admin | Approve listing |
+| PATCH | `/api/properties/:id/reject` | Admin | Reject listing |
+| POST | `/api/properties/:id/favorite` | Bearer | Toggle favorite |
+| GET | `/api/properties/user/favorites` | Bearer | My favorites |
+
+### Bookings (`/api/bookings/`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/bookings` | Customer | Book a visit |
+| GET | `/api/bookings` | Bearer | My bookings |
+| PATCH | `/api/bookings/:id/confirm` | Broker | Confirm booking |
+| PATCH | `/api/bookings/:id/cancel` | Bearer | Cancel booking |
+
+### Chat (`/api/chats`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/chats` | Bearer | Get user's chats |
+| POST | `/api/chats` | Customer | Start a chat with broker |
+| GET | `/api/chats/:chatId/messages` | Bearer | Get messages |
+
+### WebSocket Events (Socket.IO at `/socket.io/`)
+
+```
+Client → Server
+  join_chat       { chatId }
+  send_message    { chatId, type, content?, mediaUrl? }
+  typing          { chatId }
+  stop_typing     { chatId }
+  mark_read       { chatId }
+
+Server → Client
+  new_message       Message object
+  user_typing       { chatId, userId }
+  user_stop_typing  { chatId, userId }
+  messages_read     { chatId, readBy }
+  chat_notification { chatId, message }
 ```
 
-### Environment Variables
-All services require `.env` files. Copy `.env.example` for each service.
+### Media (`/api/media/`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/media/upload/image` | Bearer | Upload image (max 10 MB) |
+| POST | `/api/media/upload/video` | Bearer | Upload video (max 100 MB) |
+| DELETE | `/api/media/:key` | Bearer | Delete file |
+
+### Notifications (`/api/notifications/`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/notifications` | Bearer | Get notifications |
+| PATCH | `/api/notifications/:id/read` | Bearer | Mark as read |
+| POST | `/api/notifications/device-token` | Bearer | Register FCM token |
 
 ---
 
-## 📞 Support
+## Database Schema (18 tables)
 
-Platform built for: **Borg El Arab, Alexandria, Egypt**
+| Table | Description |
+|-------|-------------|
+| `users` | All accounts — customers, brokers, admins |
+| `brokers` | Broker profiles linked to users |
+| `companies` | Real estate company profiles |
+| `properties` | Listings (type, price, area, status) |
+| `property_locations` | GPS coordinates + address |
+| `property_images` | Images with WebP thumbnails (Cloudflare R2) |
+| `property_videos` | Video uploads |
+| `property_features` | Indoor/outdoor feature tags |
+| `favorites` | Saved properties per user |
+| `chats` | Chat rooms between customer ↔ broker |
+| `messages` | Messages (text / image / voice / property card) |
+| `bookings` | Visit and rental bookings |
+| `notifications` | Push notification log |
+| `subscription_plans` | Broker tier definitions |
+| `subscriptions` | Active broker subscriptions |
+| `payments` | Payment records |
+| `advertisements` | Banner ad management |
+| `reports` | User reports / complaints |
 
-Features Arabic RTL support throughout all interfaces.
+---
+
+## Authentication Flow
+
+```
+1. User enters phone number
+2. Server sends 6-digit OTP via Twilio SMS
+3. User submits OTP (expires in 10 min, max 5 attempts)
+4. Server returns { user, accessToken (15 min), refreshToken (30 d) }
+5. Client stores tokens in AsyncStorage (mobile) or localStorage (web)
+6. Every request attaches Authorization: Bearer <accessToken>
+7. On 401 response, client auto-refreshes via POST /api/auth/refresh
+```

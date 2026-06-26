@@ -9,7 +9,7 @@ export const api = axios.create({
 
 api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   const ip = await AsyncStorage.getItem(SERVER_IP_KEY) ?? DEFAULT_SERVER_IP;
-  config.baseURL = `http://${ip}/api`;
+  config.baseURL = `http://${ip}:8080/api`;
 
   const token = await AsyncStorage.getItem('access_token');
   if (token && config.headers) {
@@ -30,7 +30,7 @@ api.interceptors.response.use(
         if (!refreshToken) throw new Error('No refresh token');
 
         const ip = await AsyncStorage.getItem(SERVER_IP_KEY) ?? DEFAULT_SERVER_IP;
-        const { data } = await axios.post(`http://${ip}/api/auth/refresh`, { refreshToken });
+        const { data } = await axios.post(`http://${ip}:8080/api/auth/refresh`, { refreshToken });
         await AsyncStorage.multiSet([
           ['access_token', data.data.accessToken],
           ['refresh_token', data.data.refreshToken],
