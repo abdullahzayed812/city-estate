@@ -13,8 +13,8 @@ export class DatabaseConnection {
     this.pool = mysql.createPool({
       host: process.env.DB_HOST || 'localhost',
       port: parseInt(process.env.DB_PORT || '3306', 10),
-      user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || '',
+      user: process.env.DB_USER || 'abdo',
+      password: process.env.DB_PASSWORD || 'password',
       database: process.env.DB_NAME || 'realestate_db',
       waitForConnections: true,
       connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT || '20', 10),
@@ -40,7 +40,7 @@ export class DatabaseConnection {
 
   public async query<T extends RowDataPacket>(
     sql: string,
-    params?: unknown[],
+    params?: any[],
   ): Promise<IQueryResult<T>> {
     const [rows, fields] = await this.pool.query<T[]>(sql, params);
     return { rows, fields };
@@ -48,13 +48,13 @@ export class DatabaseConnection {
 
   public async execute<T extends RowDataPacket>(
     sql: string,
-    params?: unknown[],
+    params?: any[],
   ): Promise<IQueryResult<T>> {
     const [rows, fields] = await this.pool.execute<T[]>(sql, params);
     return { rows, fields };
   }
 
-  public async executeModify(sql: string, params?: unknown[]): Promise<ResultSetHeader> {
+  public async executeModify(sql: string, params?: any[]): Promise<ResultSetHeader> {
     const [result] = await this.pool.execute<ResultSetHeader>(sql, params);
     return result;
   }

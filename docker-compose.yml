@@ -149,7 +149,7 @@ services:
 
   # ============================================================
   # Web Apps
-  # admin-dashboard : http://VPS_IP:8081
+  # admin-dashboard : http://VPS_IP:8084  (8081 reserved for Metro bundler)
   # broker-web      : http://VPS_IP:8082
   # customer-web    : http://VPS_IP:8083
   # Each app proxies /api/ and /socket.io/ through the gateway internally
@@ -161,7 +161,7 @@ services:
     container_name: realestate_admin
     restart: unless-stopped
     ports:
-      - "8081:80"
+      - "8084:80"
     depends_on:
       - gateway
 

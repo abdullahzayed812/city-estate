@@ -7,3 +7,7 @@
 **/ios
 apps/broker-mobile
 apps/customer-mobile
+# Exclude dev .env files from web app builds — only .env.production is used
+apps/admin-dashboard/.env
+apps/broker-web/.env
+apps/customer-web/.env

@@ -14,8 +14,9 @@ COPY shared/response ./shared/response
 
 COPY services/notification-service ./services/notification-service
 
-RUN npm ci
+RUN npm ci --include=dev --foreground-scripts
 RUN npm run build --workspace=services/notification-service
+RUN [ -d services/notification-service/dist/shared ] && cp -r services/notification-service/dist/shared/. shared/ || true
 
 FROM node:20-alpine AS production
 
@@ -23,7 +24,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-COPY --from=builder /app/services/notification-service/dist ./dist
+COPY --from=builder /app/services/notification-service/dist/services/notification-service/src ./dist
+COPY --from=builder /app/shared ./shared
 COPY --from=builder /app/services/notification-service/package.json ./
 COPY --from=builder /app/node_modules ./node_modules
 

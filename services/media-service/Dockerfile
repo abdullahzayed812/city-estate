@@ -14,8 +14,9 @@ COPY shared/response ./shared/response
 
 COPY services/media-service ./services/media-service
 
-RUN npm ci
+RUN npm ci --include=dev --foreground-scripts
 RUN npm run build --workspace=services/media-service
+RUN [ -d services/media-service/dist/shared ] && cp -r services/media-service/dist/shared/. shared/ || true
 
 FROM node:20-alpine AS production
 
@@ -23,7 +24,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-COPY --from=builder /app/services/media-service/dist ./dist
+COPY --from=builder /app/services/media-service/dist/services/media-service/src ./dist
+COPY --from=builder /app/shared ./shared
 COPY --from=builder /app/services/media-service/package.json ./
 COPY --from=builder /app/node_modules ./node_modules
 

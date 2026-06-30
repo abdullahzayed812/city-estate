@@ -4,8 +4,8 @@ import {
   IProperty, IPropertyFull, IPropertyFilter,
   PropertyType, ListingType, PropertyStatus,
 } from '@realestate/types';
-import { generateUuid } from '@realestate/utils';
-import { parsePagination, buildPaginationMeta, IPaginatedResponse } from '@realestate/utils';
+import { generateUuid, parsePagination, buildPaginationMeta } from '@realestate/utils';
+import { IPaginatedResponse } from '@realestate/types';
 
 interface PropertyRow extends IProperty, RowDataPacket {}
 
