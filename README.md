@@ -154,12 +154,16 @@ Mobile apps connect to the VPS over HTTP — they are **not** hosted on the serv
 
 ### How mobile connects to the backend
 
-The app has a built-in settings screen (Server Config) where the user enters the VPS IP. The app then connects to:
+The server address is baked into the app at build time via `src/config/env.ts` in each app — there's no in-app settings screen. It picks the IP based on the build type (`__DEV__`):
 
-| Purpose | URL format |
-|---------|------------|
-| REST API | `http://VPS_IP:8090/api/...` |
-| WebSocket (chat) | `http://VPS_IP:8090` → nginx proxies `/socket.io/` to chat-service |
+| Build | IP used | URL |
+|-------|---------|-----|
+| Development (`npx react-native run-android`) | local dev machine IP | `http://192.168.0.128:8090/api` |
+| Release (`--mode=release`) | VPS IP | `http://<VPS_IP>:8090/api` |
+
+WebSocket (chat) connects to the same host/port; nginx proxies `/socket.io/` to chat-service.
+
+If your local dev machine's IP changes, update `DEV_SERVER_IP` in `apps/*/src/config/env.ts`. If the VPS IP changes, update `PROD_SERVER_IP` there and rebuild the release APK.
 
 ### Build the Android APK
 
@@ -171,9 +175,7 @@ npx react-native run-android --mode=release
 # APK will be at android/app/build/outputs/apk/release/app-release.apk
 ```
 
-2. Install the APK on a device and open it. Go to the **Server Config screen** and enter your VPS IP (e.g. `203.0.113.42`). The app adds `:8090` automatically.
-
-> The default placeholder IP is `192.168.0.128` (local dev). Always update this to the VPS IP before distributing the APK.
+2. Install the APK on a device and open it — it connects straight to the VPS IP baked into the release build.
 
 ---
 
