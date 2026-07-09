@@ -12,9 +12,9 @@ realestate/
 ├── apps/
 │   ├── customer-mobile/        # React Native — Customer App
 │   ├── broker-mobile/          # React Native — Broker/Agent App
-│   ├── customer-web/           # React + Vite — Customer Web (port 8083)
-│   ├── broker-web/             # React + Vite — Broker Web   (port 8082)
-│   └── admin-dashboard/        # React + Vite — Admin Panel  (port 8081)
+│   ├── customer-web/           # React + Vite — Customer Web (port 8093)
+│   ├── broker-web/             # React + Vite — Broker Web   (port 8092)
+│   └── admin-dashboard/        # React + Vite — Admin Panel  (port 8091)
 │
 ├── services/
 │   ├── auth-service/           # Port 3001 — JWT + OTP Authentication
@@ -45,17 +45,17 @@ realestate/
 ```
 Internet / VPS
       │
-      ├── :8080 ──► gateway (nginx)       API gateway — used by mobile apps
+      ├── :8090 ──► gateway (nginx)       API gateway — used by mobile apps
       │                 │                  routes /api/* to backend services
       │                 └── /socket.io/ ──► chat-service:3004
       │
-      ├── :8081 ──► admin-dashboard       Admin panel SPA
+      ├── :8091 ──► admin-dashboard       Admin panel SPA
       │                 │                  proxies /api/ → gateway internally
       │
-      ├── :8082 ──► broker-web            Broker web SPA
+      ├── :8092 ──► broker-web            Broker web SPA
       │                 │                  proxies /api/ and /socket.io/ → internal services
       │
-      └── :8083 ──► customer-web          Customer web SPA
+      └── :8093 ──► customer-web          Customer web SPA
                         │
                         └── proxies /api/ and /socket.io/ → internal services
 
@@ -67,8 +67,8 @@ Internal Docker network only (not exposed to host):
 
 ### Why this design
 - Backend services are **not exposed to the host** — they are only reachable through the gateway or directly within the Docker network.
-- Web apps (8081–8083) proxy all `/api/` calls and WebSocket connections internally, so the browser never needs to know the VPS IP — all URLs are relative (`/api/...`).
-- Port 8080 is used instead of 80 to avoid conflicts with other systems already running on the VPS.
+- Web apps (8091–8093) proxy all `/api/` calls and WebSocket connections internally, so the browser never needs to know the VPS IP — all URLs are relative (`/api/...`).
+- Ports 8090–8093 are used instead of 80/8080/8082/8083/8084 because this VPS also runs another project (`citymarket`) that already occupies those.
 
 ---
 
@@ -141,10 +141,10 @@ realestate_customer_web   Up
 
 | URL | Description |
 |-----|-------------|
-| `http://VPS_IP:8080/api/auth/health` | API gateway health check |
-| `http://VPS_IP:8081` | Admin dashboard |
-| `http://VPS_IP:8082` | Broker web app |
-| `http://VPS_IP:8083` | Customer web app |
+| `http://VPS_IP:8090/api/auth/health` | API gateway health check |
+| `http://VPS_IP:8091` | Admin dashboard |
+| `http://VPS_IP:8092` | Broker web app |
+| `http://VPS_IP:8093` | Customer web app |
 
 ---
 
@@ -158,8 +158,8 @@ The app has a built-in settings screen (Server Config) where the user enters the
 
 | Purpose | URL format |
 |---------|------------|
-| REST API | `http://VPS_IP:8080/api/...` |
-| WebSocket (chat) | `http://VPS_IP:8080` → nginx proxies `/socket.io/` to chat-service |
+| REST API | `http://VPS_IP:8090/api/...` |
+| WebSocket (chat) | `http://VPS_IP:8090` → nginx proxies `/socket.io/` to chat-service |
 
 ### Build the Android APK
 
@@ -171,7 +171,7 @@ npx react-native run-android --mode=release
 # APK will be at android/app/build/outputs/apk/release/app-release.apk
 ```
 
-2. Install the APK on a device and open it. Go to the **Server Config screen** and enter your VPS IP (e.g. `203.0.113.42`). The app adds `:8080` automatically.
+2. Install the APK on a device and open it. Go to the **Server Config screen** and enter your VPS IP (e.g. `203.0.113.42`). The app adds `:8090` automatically.
 
 > The default placeholder IP is `192.168.0.128` (local dev). Always update this to the VPS IP before distributing the APK.
 
@@ -313,7 +313,7 @@ When you're ready to add a domain, the only changes needed are:
 
 ## API Endpoints Reference
 
-All routes are accessed through the gateway at `http://VPS_IP:8080`.
+All routes are accessed through the gateway at `http://VPS_IP:8090`.
 
 ### Auth (`/api/auth/`)
 | Method | Path | Auth | Description |

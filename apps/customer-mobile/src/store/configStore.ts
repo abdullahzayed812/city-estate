@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const DEFAULT_SERVER_IP = '192.168.0.128';
-export const SERVER_IP_KEY = 'server_ip';
+export const SERVER_IP_KEY = '2.24.10.84';
 
 interface ConfigState {
   serverIp: string;
