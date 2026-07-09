@@ -47,44 +47,14 @@ apps/customer-mobile/.expo/
 .watchmanconfig
 
 # ============================================================
-# ANDROID — broker-mobile
+# broker-mobile
 # ============================================================
-apps/broker-mobile/android/.gradle/
-apps/broker-mobile/android/app/build/
-apps/broker-mobile/android/build/
-apps/broker-mobile/android/local.properties
-apps/broker-mobile/android/*.keystore
-apps/broker-mobile/android/app/release/
-apps/broker-mobile/android/app/*.jks
+apps/broker-mobile/
 
 # ============================================================
-# ANDROID — customer-mobile
+# customer-mobile
 # ============================================================
-apps/customer-mobile/android/.gradle/
-apps/customer-mobile/android/app/build/
-apps/customer-mobile/android/build/
-apps/customer-mobile/android/local.properties
-apps/customer-mobile/android/*.keystore
-apps/customer-mobile/android/app/release/
-apps/customer-mobile/android/app/*.jks
-
-# ============================================================
-# iOS — broker-mobile
-# ============================================================
-apps/broker-mobile/ios/Pods/
-apps/broker-mobile/ios/build/
-apps/broker-mobile/ios/*.xcworkspace/xcuserdata/
-apps/broker-mobile/ios/*.xcodeproj/xcuserdata/
-apps/broker-mobile/ios/DerivedData/
-
-# ============================================================
-# iOS — customer-mobile
-# ============================================================
-apps/customer-mobile/ios/Pods/
-apps/customer-mobile/ios/build/
-apps/customer-mobile/ios/*.xcworkspace/xcuserdata/
-apps/customer-mobile/ios/*.xcodeproj/xcuserdata/
-apps/customer-mobile/ios/DerivedData/
+apps/customer-mobile/
 
 # ============================================================
 # ADMIN DASHBOARD (React + Vite)
